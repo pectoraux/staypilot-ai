@@ -973,3 +973,23 @@ Stage Summary:
 - The app now shifts from tools to outcomes: owners hire AI teams with measurable goals; the AI decomposes goals into missions and executes autonomously
 - Strategic positioning: hospitality infrastructure — StayPilot Revenue AI / Network / Payments / Marketplace / Intelligence Cloud / APIs / AI Workforce
 - TASK COMPLETE — V4 pushed to GitHub
+
+# ============================================================
+# V5 — Autonomous AI Workforce Architecture
+# ============================================================
+
+---
+Task ID: V5-0
+Agent: Orchestrator (main)
+Task: V5 kickoff — change the architecture, not add pages. Build a REAL execution framework: Planner, Workers, Tools, ApprovalGate, MemoryStore, EventBus. The UI becomes a window into a live AI workforce that actually runs.
+
+Core interfaces (from user spec):
+  interface Planner { createMissions(goals: Goal[]): Promise<Mission[]> }
+  interface Worker { execute(task: Task): Promise<TaskResult> }
+  interface Tool { name: string; execute(input: unknown): Promise<unknown> }
+  interface ApprovalGate { requiresApproval(task: Task): boolean }
+  interface MemoryStore { remember(event: MemoryEvent): Promise<void>; recall(query: MemoryQuery): Promise<Memory[]> }
+
+Engine in src/lib/workforce/. The orchestrator runs a real continuous loop (setInterval) in the browser: planner generates missions/tasks from goals, execution queue runs approved tasks, workers execute via tools that mutate the digital twin, events propagate, memory persists (localStorage), learning records expected vs actual. The Outcome Dashboard observes LIVE state — not static mock data. Within seconds of loading, tasks appear, execute, and the "Recent AI Decisions" feed updates in real-time.
+
+This is the difference from V1-V4: those were sophisticated UI over static data. V5 has a real engine running.

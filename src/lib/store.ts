@@ -3,8 +3,9 @@
 import { create } from 'zustand'
 
 export type ModuleKey =
+  | 'outcome-dashboard' | 'workforce-console' | 'copilot'
   | 'outcome-goals' | 'autonomous-engine'
-  | 'mission-control' | 'missions' | 'opportunities' | 'agents' | 'insights' | 'copilot'
+  | 'mission-control' | 'missions' | 'opportunities' | 'agents' | 'insights'
   | 'network-intelligence' | 'benchmarking' | 'ai-marketplace' | 'digital-employees' | 'guest-network'
   | 'digital-twin' | 'knowledge-graph' | 'predictions' | 'segmentation' | 'funnel'
   | 'reputation-intel' | 'property-brain' | 'events' | 'predictive-ops'
@@ -30,7 +31,7 @@ interface AppState {
 }
 
 export const useApp = create<AppState>((set) => ({
-  activeModule: 'outcome-goals',
+  activeModule: 'outcome-dashboard',
   selectedGuestId: null,
   sidebarOpen: false,
   copilotOpen: false,

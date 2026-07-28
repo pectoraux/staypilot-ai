@@ -7,10 +7,11 @@ import { PROPERTY } from '@/lib/data'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
-import { useTheme } from 'next-themes'
+import { useTheme } from '@/components/theme-provider'
 import { Moon, Sun, Menu, Search, Bell, Sparkles, Hotel, ChevronRight, Command } from 'lucide-react'
 import { ModuleRegistry } from './modules/registry'
 import { CopilotPalette } from './copilot-palette'
+import { startOrchestrator } from '@/lib/workforce/orchestrator'
 
 function SidebarContent() {
   const { activeModule, setModule } = useApp()
@@ -140,6 +141,10 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
 
 export function AppShell() {
   const { sidebarOpen, setSidebarOpen } = useApp()
+  React.useEffect(() => {
+    // Start the autonomous workforce engine (V5)
+    try { startOrchestrator() } catch (e) { console.error('orchestrator failed', e) }
+  }, [])
   return (
     <div className="flex min-h-screen w-full bg-background">
       {/* Desktop sidebar */}
@@ -162,7 +167,7 @@ export function AppShell() {
         </main>
       </div>
 
-      <CopilotPalette />
+      {/* <CopilotPalette /> */}
     </div>
   )
 }

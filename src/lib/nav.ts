@@ -2,7 +2,7 @@ import type { ModuleKey } from '@/lib/store'
 import {
   Target, Zap, Rocket, Sparkles, Bot, FileText, Command, Network, BarChart3,
   Store, Globe2, Box, Share2, TrendingUp, Users, Filter, Layers,
-  Star, Brain, Webhook, Wallet, Crown, Plug,
+  Star, Brain, Webhook, Wallet, Crown, Plug, Cpu, Activity,
   CalendarDays, BookOpen, MessageCircle, Megaphone, FlaskConical,
   Building2, Package, Crosshair, Radio, Wrench, Cloud,
   Map, LayoutDashboard,
@@ -18,14 +18,18 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  // Outcomes — the V4 centerpiece
-  { key: 'outcome-goals', label: 'Outcome Goals', icon: Target, group: 'Outcomes', badge: '6', isNew: true },
-  { key: 'autonomous-engine', label: 'Autonomous Engine', icon: Zap, group: 'Outcomes', isNew: true },
+  // Workforce — the V5 live engine
+  { key: 'outcome-dashboard', label: 'Outcome Dashboard', icon: Activity, group: 'Workforce', badge: 'Live', isNew: true },
+  { key: 'workforce-console', label: 'Workforce Console', icon: Cpu, group: 'Workforce', isNew: true },
+  { key: 'copilot', label: 'Hospitality Copilot', icon: Command, group: 'Workforce', badge: '⌘K' },
+  { key: 'outcome-goals', label: 'Outcome Goals', icon: Target, group: 'Workforce', badge: '6' },
+  { key: 'autonomous-engine', label: 'Autonomous Engine', icon: Zap, group: 'Workforce' },
+
+  // Outcomes — missions & approvals
   { key: 'mission-control', label: 'Mission Control', icon: Rocket, group: 'Outcomes' },
   { key: 'missions', label: 'Active Missions', icon: Sparkles, group: 'Outcomes', badge: '5' },
   { key: 'opportunities', label: 'Opportunity Feed', icon: Sparkles, group: 'Outcomes', badge: '10' },
-  { key: 'copilot', label: 'Hospitality Copilot', icon: Command, group: 'Outcomes', badge: '⌘K' },
-  { key: 'agents', label: 'AI Workforce', icon: Bot, group: 'Outcomes', badge: '12' },
+  { key: 'agents', label: 'AI Employees', icon: Bot, group: 'Outcomes', badge: '12' },
   { key: 'insights', label: 'Daily Brief', icon: FileText, group: 'Outcomes', badge: 'CEO' },
 
   // Network — network effects
@@ -86,4 +90,4 @@ export const NAV_ITEMS: NavItem[] = [
   { key: 'marketplace', label: 'Service Marketplace', icon: Store, group: 'Platform' },
 ]
 
-export const NAV_GROUPS = ['Outcomes', 'Network', 'Intelligence', 'Staff', 'Operations', 'Guests', 'Growth', 'Revenue', 'Platform']
+export const NAV_GROUPS = ['Workforce', 'Outcomes', 'Network', 'Intelligence', 'Staff', 'Operations', 'Guests', 'Growth', 'Revenue', 'Platform']

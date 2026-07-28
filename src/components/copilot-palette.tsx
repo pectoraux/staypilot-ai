@@ -159,10 +159,24 @@ export function CopilotPalette() {
 
     // Augment with intent routing for actionable commands
     const route = routeIntent(text)
+    // V5: for action-oriented commands, invoke the REAL workforce engine
+    const isAction = /fill|convert|raise|reduce|launch|contact|send|recover/.test(text.toLowerCase())
+    let engineResult: { mission: string; tasks: number; message: string } | null = null
+    if (isAction) {
+      try {
+        const { copilotCommand } = await import('@/lib/workforce/orchestrator')
+        engineResult = copilotCommand(text)
+      } catch { /* engine not ready */ }
+    }
     if (!assistantReply || assistantReply.length < 20) {
       assistantReply = route.reply
     }
     actions = route.actions
+    // V5: if the real engine created a mission, append the engine confirmation
+    if (engineResult) {
+      assistantReply += `\n\n⚡ ${engineResult.message}`
+      actions = [{ label: 'View live execution', module: 'workforce-console' }, ...(actions ?? [])]
+    }
 
     const assistantMsg: CopilotMsg = { role: 'assistant', content: assistantReply, actions }
     setMessages((m) => [...m, assistantMsg])

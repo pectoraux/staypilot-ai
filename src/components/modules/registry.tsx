@@ -7,6 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 const lazy = <T extends { default: React.ComponentType }>(p: Promise<T>) =>
   React.lazy(() => p)
 
+const OutcomeDashboardModule = lazy(import('./outcome-dashboard').then(m => ({ default: m.OutcomeDashboardModule })))
+const WorkforceConsoleModule = lazy(import('./workforce-console').then(m => ({ default: m.WorkforceConsoleModule })))
 const OutcomeGoalsModule = lazy(import('./outcome-goals').then(m => ({ default: m.OutcomeGoalsModule })))
 const AutonomousEngineModule = lazy(import('./autonomous-engine').then(m => ({ default: m.AutonomousEngineModule })))
 const MissionControlModule = lazy(import('./mission-control').then(m => ({ default: m.MissionControlModule })))
@@ -58,6 +60,8 @@ const WebsiteBuilderModule = lazy(import('./website-builder').then(m => ({ defau
 const MarketplaceModule = lazy(import('./marketplace').then(m => ({ default: m.MarketplaceModule })))
 
 const MAP: Record<ModuleKey, React.ComponentType> = {
+  'outcome-dashboard': OutcomeDashboardModule,
+  'workforce-console': WorkforceConsoleModule,
   'outcome-goals': OutcomeGoalsModule,
   'autonomous-engine': AutonomousEngineModule,
   'mission-control': MissionControlModule,
@@ -123,7 +127,7 @@ function ModuleSkeleton() {
 
 export function ModuleRegistry() {
   const { activeModule } = useApp()
-  const Comp = MAP[activeModule] ?? OutcomeGoalsModule
+  const Comp = MAP[activeModule] ?? OutcomeDashboardModule
   return (
     <React.Suspense fallback={<ModuleSkeleton />}>
       <Comp />
