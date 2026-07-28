@@ -1,0 +1,393 @@
+     1→     1→// StayPilot AI — Rich mock dataset for a boutique guest house in Accra, Ghana.
+     2→     2→// Reservations are generated relative to "today" so the calendar is always live.
+     3→     3→import type {
+     4→     4→  Room, Reservation, Guest, TimelineEntry, Campaign, Review, Competitor,
+     5→     5→  MaintenanceIssue, HousekeepingTask, CorporateAccount, Experience, AIAgent,
+     6→     6→  AIRecommendation, PricingSuggestion, FinancialMetric, Insight, BookingSource,
+     7→     7→} from './types'
+     8→     8→
+     9→     9→// Deterministic pseudo-random for stable rendering
+    10→    10→let _seed = 42
+    11→    11→function rand() {
+    12→    12→  _seed = (_seed * 1103515245 + 12345) & 0x7fffffff
+    13→    13→  return _seed / 0x7fffffff
+    14→    14→}
+    15→    15→function pick<T>(arr: T[]): T { return arr[Math.floor(rand() * arr.length)] }
+    16→    16→function randInt(min: number, max: number) { return Math.floor(rand() * (max - min + 1)) + min }
+    17→    17→function daysFromNow(n: number): string {
+    18→    18→  const d = new Date()
+    19→    19→  d.setHours(0, 0, 0, 0)
+    20→    20→  d.setDate(d.getDate() + n)
+    21→    21→  return d.toISOString().slice(0, 10)
+    22→    22→}
+    23→    23→function daysAgo(n: number): string { return daysFromNow(-n) }
+    24→    24→
+    25→    25→// ---------- PROPERTY ----------
+    26→    26→export const PROPERTY = {
+    27→    27→  name: 'Akwaaba Boutique Lodge',
+    28→    28→  location: 'East Legon, Accra, Ghana',
+    29→    29→  roomsTotal: 18,
+    30→    30→  currency: 'GHS',
+    31→    31→  currencySymbol: '₵',
+    32→    32→  established: 2019,
+    33→    33→  tagline: 'Where every guest feels at home',
+    34→    34→}
+    35→    35→
+    36→    36→// ---------- ROOMS ----------
+    37→    37→const ROOM_DEFS: Array<Omit<Room, 'id' | 'status'>> = [
+    38→    38→  { number: '101', name: 'Baobab Standard', type: 'Standard', floor: 1, capacity: 2, baseRate: 450, amenities: ['WiFi', 'AC', 'TV', 'Breakfast'] },
+    39→    39→  { number: '102', name: 'Savannah Standard', type: 'Standard', floor: 1, capacity: 2, baseRate: 450, amenities: ['WiFi', 'AC', 'TV', 'Breakfast'] },
+    40→    40→  { number: '103', name: 'Lagoon Deluxe', type: 'Deluxe', floor: 1, capacity: 2, baseRate: 620, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar'] },
+    41→    41→  { number: '104', name: 'Mango Deluxe', type: 'Deluxe', floor: 1, capacity: 3, baseRate: 620, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar'] },
+    42→    42→  { number: '201', name: 'Sunset Suite', type: 'Suite', floor: 2, capacity: 2, baseRate: 950, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar', 'Balcony'] },
+    43→    43→  { number: '202', name: 'Sunrise Suite', type: 'Suite', floor: 2, capacity: 2, baseRate: 950, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar', 'Balcony'] },
+    44→    44→  { number: '203', name: 'Harmattan Family', type: 'Family', floor: 2, capacity: 4, baseRate: 1100, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar', 'Kitchenette'] },
+    45→    45→  { number: '204', name: 'Rainforest Family', type: 'Family', floor: 2, capacity: 4, baseRate: 1100, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar', 'Kitchenette'] },
+    46→    46→  { number: '301', name: 'Executive Gold', type: 'Executive', floor: 3, capacity: 2, baseRate: 1350, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar', 'Lounge', 'Workspace'] },
+    47→    47→  { number: '302', name: 'Executive Platinum', type: 'Executive', floor: 3, capacity: 2, baseRate: 1350, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar', 'Lounge', 'Workspace'] },
+    48→    48→  { number: '303', name: 'Penthouse Sky', type: 'Penthouse', floor: 3, capacity: 4, baseRate: 2200, amenities: ['WiFi', 'AC', 'TV', 'Breakfast', 'Mini-bar', 'Lounge', 'Workspace', 'Jacuzzi', 'Terrace'] },
+    49→    49→]
+    50→    50→
+    51→    51→export const ROOMS: Room[] = ROOM_DEFS.map((r, i) => ({
+    52→    52→  ...r,
+    53→    53→  id: `room-${r.number}`,
+    54→    54→  status: i % 7 === 0 ? 'Maintenance' : i % 5 === 0 ? 'Cleaning' : i % 3 === 0 ? 'Occupied' : 'Available',
+    55→    55→}))
+    56→    56→
+    57→    57→// ---------- GUESTS ----------
+    58→    58→const FIRST_NAMES = ['Kwame', 'Ama', 'Kofi', 'Akosua', 'Yaw', 'Adwoa', 'Kwabena', 'Abena', 'Chen', 'Mei', 'Liang', 'Sarah', 'James', 'Emily', 'David', 'Fatima', 'Omar', 'Aisha', 'Lerato', 'Thabo', 'Ngozi', 'Emeka', 'Priya', 'Raj', 'Anika', 'Daniel', 'Sophie', 'Marcus', 'Linda', 'Tomás', 'Isabella', 'Yuki', 'Hiroshi', 'Zara', 'Ibrahim']
+    59→    59→const LAST_NAMES = ['Mensah', 'Boateng', 'Asante', 'Owusu', 'Annor', 'Dartey', 'Liu', 'Wang', 'Zhang', 'Smith', 'Brown', 'Johnson', 'Hassan', 'Diop', 'Mbeki', 'Nkosi', 'Patel', 'Kumar', 'Sharma', 'Müller', 'Schmidt', 'Rossi', 'Tanaka', 'Yamamoto', 'Costa', 'Silva']
+    60→    60→const COUNTRIES = [
+    61→    61→  { name: 'Ghana', code: 'GH', lang: 'English' },
+    62→    62→  { name: 'Nigeria', code: 'NG', lang: 'English' },
+    63→    63→  { name: 'South Africa', code: 'ZA', lang: 'English' },
+    64→    64→  { name: 'Kenya', code: 'KE', lang: 'English' },
+    65→    65→  { name: 'United Kingdom', code: 'GB', lang: 'English' },
+    66→    66→  { name: 'United States', code: 'US', lang: 'English' },
+    67→    67→  { name: 'Germany', code: 'DE', lang: 'German' },
+    68→    68→  { name: 'China', code: 'CN', lang: 'Mandarin' },
+    69→    69→  { name: 'India', code: 'IN', lang: 'Hindi' },
+    70→    70→  { name: 'France', code: 'FR', lang: 'French' },
+    71→    71→  { name: 'Canada', code: 'CA', lang: 'English' },
+    72→    72→  { name: 'Côte d\u2019Ivoire', code: 'CI', lang: 'French' },
+    73→    73→]
+    74→    74→const AVATAR_COLORS = ['#c2410c', '#0d9488', '#b45309', '#9333ea', '#be123c', '#15803d', '#a16207', '#0e7490']
+    75→    75→const SOURCES: BookingSource[] = ['Airbnb', 'Booking.com', 'Direct Website', 'WhatsApp', 'Walk-in', 'Phone', 'Expedia', 'Corporate', 'Referral', 'Instagram', 'Facebook', 'Agoda']
+    76→    76→const TIERS: Array<Guest['loyaltyTier']> = ['Bronze', 'Silver', 'Gold', 'VIP']
+    77→    77→const SEGMENTS: Guest['segments'] = ['Corporate Traveler', 'Leisure', 'Family', 'International Tourist', 'Weekend Traveler', 'Long-stay Guest', 'High Spender', 'Birthday', 'Anniversary']
+    78→    78→
+    79→    79→function genGuest(i: number): Guest {
+    80→    80→  const first = FIRST_NAMES[i % FIRST_NAMES.length]
+    81→    81→  const last = LAST_NAMES[(i * 3) % LAST_NAMES.length]
+    82→    82→  const country = COUNTRIES[i % COUNTRIES.length]
+    83→    83→  const stays = randInt(1, 12)
+    84→    84→  const lifetime = stays * randInt(450, 2400)
+    85→    85→  const tier = stays > 8 ? 'VIP' : stays > 5 ? 'Gold' : stays > 2 ? 'Silver' : 'Bronze'
+    86→    86→  const segments: Guest['segments'][] = []
+    87→    87→  if (country.code !== 'GH') segments.push('International Tourist')
+    88→    88→  if (stays > 4) segments.push('High Spender')
+    89→    89→  segments.push(pick(['Corporate Traveler', 'Leisure', 'Family', 'Weekend Traveler', 'Long-stay Guest']))
+    90→    90→  if (i % 7 === 0) segments.push('Birthday')
+    91→    91→  if (i % 11 === 0) segments.push('Anniversary')
+    92→    92→  const source = SOURCES[i % SOURCES.length]
+    93→    93→  return {
+    94→    94→    id: `guest-${i + 1}`,
+    95→    95→    name: `${first} ${last}`,
+    96→    96→    phone: `+${randInt(1, 99)} ${randInt(1000000000, 9999999999)}`,
+    97→    97→    email: `${first.toLowerCase()}.${last.toLowerCase()}@example.com`,
+    98→    98→    country: country.name,
+    99→    99→    countryCode: country.code,
+   100→   100→    language: country.lang,
+   101→   101→    bookingSource: source,
+   102→   102→    lifetimeSpend: lifetime,
+   103→   103→    totalStays: stays,
+   104→   104→    favoriteRoom: pick(ROOMS).name,
+   105→   105→    specialRequests: pick(['Extra pillows', 'Late checkout', 'Ground floor', 'Quiet room', 'Vegetarian meals', 'Airport pickup', 'High floor', 'Crib needed', '']),
+   106→   106→    birthday: `${String(randInt(1, 28)).padStart(2, '0')}-${String(randInt(1, 12)).padStart(2, '0')}`,
+   107→   107→    anniversary: i % 4 === 0 ? `${String(randInt(1, 28)).padStart(2, '0')}-${String(randInt(1, 12)).padStart(2, '0')}` : undefined,
+   108→   108→    travelReason: pick(['Business', 'Leisure', 'Family', 'Medical', 'Relocation']),
+   109→   109→    familyMembers: i % 3 === 0 ? randInt(1, 3) : 0,
+   110→   110→    dietaryPreferences: pick(['None', 'Vegetarian', 'Halal', 'Vegan', 'Gluten-free', '']),
+   111→   111→    avgRatingGiven: Number((3.5 + rand() * 1.5).toFixed(1)),
+   112→   112→    repeatVisits: Math.max(0, stays - 1),
+   113→   113→    referralSource: i % 5 === 0 ? pick(['Friend', 'Google', 'Instagram', 'Returning guest', 'Corporate']) : undefined,
+   114→   114→    loyaltyTier: tier,
+   115→   115→    loyaltyPoints: stays * randInt(100, 400),
+   116→   116→    segments: Array.from(new Set(segments)),
+   117→   117→    tags: pick([['repeat', 'high-value'], ['new', 'direct'], ['ota', 'one-time'], ['vip', 'referral'], ['family'], ['business'], ['international'], []]),
+   118→   118→    lastStay: daysAgo(randInt(5, 400)),
+   119→   119→    firstSeen: daysAgo(randInt(60, 900)),
+   120→   120→    avatarColor: AVATAR_COLORS[i % AVATAR_COLORS.length],
+   121→   121→  }
+   122→   122→}
+   123→   123→export const GUESTS: Guest[] = Array.from({ length: 64 }, (_, i) => genGuest(i))
+   124→   124→
+   125→   125→// ---------- RESERVATIONS ----------
+   126→   126→const STATUS_WEIGHTS: Array<[Reservation['status'], number]> = [
+   127→   127→  ['Checked-out', 45], ['Confirmed', 30], ['Checked-in', 12], ['Cancelled', 8], ['Pending', 3], ['No-show', 2],
+   128→   128→]
+   129→   129→function weightedStatus(): Reservation['status'] {
+   130→   130→  const total = STATUS_WEIGHTS.reduce((s, [, w]) => s + w, 0)
+   131→   131→  let r = rand() * total
+   132→   132→  for (const [st, w] of STATUS_WEIGHTS) { if ((r -= w) <= 0) return st }
+   133→   133→  return 'Confirmed'
+   134→   134→}
+   135→   135→function nightsRate(room: Room, nights: number) { return room.baseRate * nights }
+   136→   136→
+   137→   137→function genReservation(i: number): Reservation {
+   138→   138→  const room = ROOMS[i % ROOMS.length]
+   139→   139→  const guest = GUESTS[i % GUESTS.length]
+   140→   140→  // spread reservations across -60..+45 days
+   141→   141→  const startOffset = randInt(-60, 45)
+   142→   142→  const nights = randInt(1, 6)
+   143→   143→  const checkIn = daysFromNow(startOffset)
+   144→   144→  const checkOut = daysFromNow(startOffset + nights)
+   145→   145→  const source = guest.bookingSource
+   146→   146→  const status = weightedStatus()
+   147→   147→  const commissionRate = source === 'Airbnb' ? 0.15 : source === 'Booking.com' ? 0.15 : source === 'Expedia' ? 0.18 : source === 'Agoda' ? 0.17 : source === 'Vrbo' ? 0.1 : 0
+   148→   148→  const gross = Math.round(nightsRate(room, nights) * (0.9 + rand() * 0.3))
+   149→   149→  const commission = Math.round(gross * commissionRate)
+   150→   150→  const acqCost = commissionRate > 0 ? Math.round(gross * (0.02 + rand() * 0.04)) : 0
+   151→   151→  return {
+   152→   152→    id: `res-${i + 1}`,
+   153→   153→    guestId: guest.id,
+   154→   154→    guestName: guest.name,
+   155→   155→    roomIds: [room.id],
+   156→   156→    checkIn, checkOut,
+   157→   157→    status,
+   158→   158→    source,
+   159→   159→    adults: randInt(1, 2),
+   160→   160→    children: rand() > 0.7 ? randInt(1, 2) : 0,
+   161→   161→    grossRevenue: gross,
+   162→   162→    commission,
+   163→   163→    netRevenue: gross - commission,
+   164→   164→    acquisitionCost: acqCost,
+   165→   165→    campaign: rand() > 0.7 ? pick(['Ramadan Promo', 'Weekend Flash Sale', 'Corporate Q4', 'Loyalty Reboot', 'Christmas Repeat']) : undefined,
+   166→   166→    coupon: rand() > 0.85 ? pick(['STAY10', 'DIRECT15', 'WELCOME', 'VIPBACK']) : undefined,
+   167→   167→    notes: rand() > 0.7 ? pick(['Needs airport pickup', 'Celebrating anniversary', 'Business meeting nearby', 'First time in Accra', '']) : '',
+   168→   168→    createdAt: daysAgo(randInt(1, 60)),
+   169→   169→  }
+   170→   170→}
+   171→   171→export const RESERVATIONS: Reservation[] = Array.from({ length: 120 }, (_, i) => genReservation(i))
+   172→   172→
+   173→   173→// ---------- TIMELINE (for a sample guest) ----------
+   174→   174→export function timelineForGuest(guestId: string): TimelineEntry[] {
+   175→   175→  const guest = GUESTS.find(g => g.id === guestId)
+   176→   176→  if (!guest) return []
+   177→   177→  const res = RESERVATIONS.filter(r => r.guestId === guestId).sort((a, b) => a.checkIn.localeCompare(b.checkIn))
+   178→   178→  const entries: TimelineEntry[] = []
+   179→   179→  res.forEach((r, idx) => {
+   180→   180→    entries.push({ id: `${guestId}-res-${idx}`, guestId, type: 'Reservation', title: `Booked ${ROOMS.find(rm => rm.id === r.roomIds[0])?.name ?? 'a room'}`, description: `${r.nights ?? ''} ${r.source} · ₵${r.grossRevenue.toLocaleString()}`, date: r.createdAt, channel: r.source, value: r.grossRevenue })
+   181→   181→    if (r.status === 'Checked-out' || r.status === 'Checked-in') {
+   182→   182→      entries.push({ id: `${guestId}-ci-${idx}`, guestId, type: 'Check-in', title: 'Checked in', description: `Room ${ROOMS.find(rm => rm.id === r.roomIds[0])?.number}`, date: r.checkIn })
+   183→   183→    }
+   184→   184→    if (r.status === 'Checked-out') {
+   185→   185→      entries.push({ id: `${guestId}-co-${idx}`, guestId, type: 'Check-out', title: 'Checked out', description: 'Stay completed', date: r.checkOut })
+   186→   186→    }
+   187→   187→    if (r.commission > 0) {
+   188→   188→      entries.push({ id: `${guestId}-pay-${idx}`, guestId, type: 'Payment', title: 'Payment received', description: `₵${r.grossRevenue.toLocaleString()} via ${r.source}`, date: r.createdAt, value: r.grossRevenue })
+   189→   189→    }
+   190→   190→  })
+   191→   191→  entries.push({ id: `${guestId}-wa`, guestId, type: 'WhatsApp', title: 'WhatsApp inquiry', description: 'Asked about airport pickup and early check-in', date: daysAgo(randInt(1, 30)), channel: 'WhatsApp', sentiment: 'neutral' })
+   192→   192→  entries.push({ id: `${guestId}-email`, guestId, type: 'Email', title: 'Welcome email sent', description: 'Sent booking confirmation and local guide', date: daysAgo(randInt(1, 20)), channel: 'Email', sentiment: 'positive' })
+   193→   193→  if (guest.avgRatingGiven && guest.avgRatingGiven >= 4) {
+   194→   194→    entries.push({ id: `${guestId}-rev`, guestId, type: 'Review', title: `Left a ${guest.avgRatingGiven}★ review`, description: pick(['"Lovely staff, great location!"', '"Felt like home, will return."', '"Clean and comfortable, highly recommend."']), date: daysAgo(randInt(1, 60)), sentiment: 'positive' })
+   195→   195→  }
+   196→   196→  entries.push({ id: `${guestId}-camp`, guestId, type: 'Campaign', title: 'Added to "Loyalty Reboot" campaign', description: 'Targeted as lapsed high-value guest', date: daysAgo(randInt(1, 15)) })
+   197→   197→  entries.sort((a, b) => b.date.localeCompare(a.date))
+   198→   198→  return entries
+   199→   199→}
+   200→   200→
+   201→   201→// ---------- CAMPAIGNS ----------
+   202→   202→export const CAMPAIGNS: Campaign[] = [
+   203→   203→  { id: 'camp-1', name: 'Weekend Flash Sale', status: 'Active', channel: 'WhatsApp', audience: 'Lapsed guests (6-12 months)', audienceSize: 48, message: 'Hi {name}! We miss you at Akwaaba Lodge. Enjoy 20% off this weekend — your favorite room is waiting. 🌴', discount: 20, sentAt: daysAgo(1), opens: 39, clicks: 22, conversions: 7, revenue: 14200, expectedOccupancyLift: 12, aiGenerated: true },
+   204→   204→  { id: 'camp-2', name: 'Christmas Repeat Offer', status: 'Scheduled', channel: 'Email', audience: 'Guests who stayed last Christmas', audienceSize: 23, message: 'Celebrate the holidays with us again! Book your Christmas stay by Nov 30 for a free festive dinner.', discount: 15, scheduledFor: daysFromNow(3), opens: 0, clicks: 0, conversions: 0, revenue: 0, expectedOccupancyLift: 8, aiGenerated: true },
+   205→   205→  { id: 'camp-3', name: 'Corporate Q4 Outreach', status: 'Active', channel: 'Email', audience: 'Corporate travelers', audienceSize: 34, message: 'Planning year-end travel? Lock in our corporate rate of ₵1,150/night with complimentary breakfast.', discount: 10, sentAt: daysAgo(4), opens: 28, clicks: 15, conversions: 5, revenue: 28750, expectedOccupancyLift: 9, aiGenerated: true },
+   206→   206→  { id: 'camp-4', name: 'Birthday Reward', status: 'Active', channel: 'SMS', audience: 'Upcoming birthdays', audienceSize: 12, message: 'Happy birthday month, {name}! Enjoy a free night upgrade on your next stay. 🎂', discount: 0, sentAt: daysAgo(2), opens: 11, clicks: 9, conversions: 3, revenue: 6800, aiGenerated: true },
+   207→   207→  { id: 'camp-5', name: 'Instagram Story Promo', status: 'Completed', channel: 'Instagram', audience: 'Followers near Accra', audienceSize: 1850, message: 'Tag someone you\u2019d bring to Akwaaba Lodge and win a free weekend!', discount: 0, sentAt: daysAgo(20), opens: 1240, clicks: 180, conversions: 11, revenue: 22100, expectedOccupancyLift: 6, aiGenerated: false },
+   208→   208→  { id: 'camp-6', name: 'Loyalty Reboot', status: 'Scheduled', channel: 'WhatsApp', audience: 'VIP & Gold lapsed 90+ days', audienceSize: 18, message: 'As a {tier} member, enjoy 25% off + late checkout. Your points miss you!', discount: 25, scheduledFor: daysFromNow(1), opens: 0, clicks: 0, conversions: 0, revenue: 0, expectedOccupancyLift: 14, aiGenerated: true },
+   209→   209→]
+   210→   210→
+   211→   211→// ---------- REVIEWS ----------
+   212→   212→export const REVIEWS: Review[] = [
+   213→   213→  { id: 'rev-1', platform: 'Google', guestName: 'Sarah Johnson', rating: 5, text: 'Absolutely loved my stay! The staff went above and beyond, and the breakfast was incredible. Will definitely return.', date: daysAgo(2), sentiment: 'positive', responded: true, response: 'Thank you Sarah! We can\u2019t wait to welcome you back. 🌟' },
+   214→   214→  { id: 'rev-2', platform: 'Booking.com', guestName: 'Chen Wei', rating: 4, text: 'Clean rooms and great location. WiFi could be a bit faster but overall a very pleasant stay.', date: daysAgo(4), sentiment: 'positive', responded: false },
+   215→   215→  { id: 'rev-3', platform: 'Airbnb', guestName: 'Marcus Brown', rating: 5, text: 'Felt like home. The concierge helped me book a tour to Cape Coast — unforgettable!', date: daysAgo(5), sentiment: 'positive', responded: true, response: 'So glad you enjoyed the tour, Marcus! 🙌' },
+   216→   216→  { id: 'rev-4', platform: 'TripAdvisor', guestName: 'Fatima Diop', rating: 3, text: 'Nice place but the AC in room 102 was noisy. Staff were friendly though.', date: daysAgo(7), sentiment: 'neutral', responded: false },
+   217→   217→  { id: 'rev-5', platform: 'Google', guestName: 'David Schmidt', rating: 5, text: 'Best boutique lodge in East Legon. The penthouse terrace is stunning at sunset.', date: daysAgo(9), sentiment: 'positive', responded: true, response: 'Thank you David! The sunset view is our favorite too. 🌅' },
+   218→   218→  { id: 'rev-6', platform: 'Facebook', guestName: 'Linda Costa', rating: 2, text: 'Booked through an OTA and had to wait 40 minutes to check in. Disappointing start.', date: daysAgo(11), sentiment: 'negative', responded: false },
+   219→   219→  { id: 'rev-7', platform: 'Booking.com', guestName: 'Priya Sharma', rating: 5, text: 'Excellent value. The family room was spacious and the kids loved the breakfast spread.', date: daysAgo(14), sentiment: 'positive', responded: true, response: 'So happy the kids enjoyed it! 🥞' },
+   220→   220→]
+   221→   221→
+   222→   222→// ---------- COMPETITORS ----------
+   223→   223→export const COMPETITORS: Competitor[] = [
+   224→   224→  { id: 'comp-1', name: 'Golden Tulip Accra', distance: 1.2, avgRate: 980, occupancy: 82, rating: 4.3, reviewCount: 1240, amenities: ['Pool', 'Gym', 'Restaurant', 'Bar'], rank: 1 },
+   225→   225→  { id: 'comp-2', name: 'Labadi Beach Hotel', distance: 2.8, avgRate: 1450, occupancy: 76, rating: 4.5, reviewCount: 2100, amenities: ['Pool', 'Beach', 'Spa', 'Restaurant', 'Bar'], rank: 2 },
+   226→   226→  { id: 'comp-3', name: 'Ibis Styles Accra', distance: 3.4, avgRate: 720, occupancy: 88, rating: 4.1, reviewCount: 890, amenities: ['Pool', 'Restaurant', 'Gym'], rank: 3 },
+   227→   227→  { id: 'comp-4', name: 'Accra City Hotel', distance: 4.1, avgRate: 850, occupancy: 71, rating: 3.9, reviewCount: 560, amenities: ['Pool', 'Restaurant', 'Bar'], rank: 4 },
+   228→   228→  { id: 'comp-5', name: 'Kempinski Gold Coast', distance: 5.0, avgRate: 2100, occupancy: 69, rating: 4.7, reviewCount: 1850, amenities: ['Pool', 'Spa', 'Gym', 'Restaurant', 'Bar', 'Casino'], rank: 5 },
+   229→   229→]
+   230→   230→
+   231→   231→// ---------- MAINTENANCE ----------
+   232→   232→export const MAINTENANCE: MaintenanceIssue[] = [
+   233→   233→  { id: 'mnt-1', roomNumber: '102', title: 'Noisy AC unit', description: 'Guest reported rattling noise from AC in room 102. Likely needs fan motor replacement.', priority: 'Medium', status: 'Open', assignedTo: 'Tech Kojo', estimatedCost: 350, createdAt: daysAgo(1) },
+   234→   234→  { id: 'mnt-2', roomNumber: '303', title: 'Jacuzzi leak', description: 'Slow leak detected under penthouse jacuzzi. Needs sealing.', priority: 'High', status: 'In Progress', assignedTo: 'Tech Yaw', estimatedCost: 800, createdAt: daysAgo(3) },
+   235→   235→  { id: 'mnt-3', roomNumber: '201', title: 'Balcony door lock', description: 'Balcony door lock stiff, hard to open.', priority: 'Low', status: 'Open', estimatedCost: 120, createdAt: daysAgo(2) },
+   236→   236→  { id: 'mnt-4', roomNumber: '104', title: 'Shower drain slow', description: 'Water draining slowly in shower.', priority: 'Medium', status: 'Resolved', assignedTo: 'Tech Kojo', estimatedCost: 90, createdAt: daysAgo(10), resolvedAt: daysAgo(7) },
+   237→   237→  { id: 'mnt-5', roomNumber: '301', title: 'Flickering light', description: 'Bathroom light flickers intermittently.', priority: 'Low', status: 'Open', estimatedCost: 60, createdAt: daysAgo(0) },
+   238→   238→]
+   239→   239→
+   240→   240→// ---------- HOUSEKEEPING ----------
+   241→   241→export const HOUSEKEEPING: HousekeepingTask[] = [
+   242→   242→  { id: 'hk-1', roomNumber: '101', type: 'Cleaning', status: 'Done', assignedTo: 'Grace', priority: 'Medium', dueTime: '09:00', notes: 'Check-out clean' },
+   243→   243→  { id: 'hk-2', roomNumber: '203', type: 'Cleaning', status: 'In Progress', assignedTo: 'Akua', priority: 'High', dueTime: '11:00', notes: 'Family checkout, extra time' },
+   244→   244→  { id: 'hk-3', roomNumber: '302', type: 'Inspection', status: 'Pending', assignedTo: 'Supervisor Adwoa', priority: 'Medium', dueTime: '13:00' },
+   245→   245→  { id: 'hk-4', roomNumber: '104', type: 'Cleaning', status: 'Pending', assignedTo: 'Grace', priority: 'Medium', dueTime: '14:00' },
+   246→   246→  { id: 'hk-5', roomNumber: '202', type: 'Lost & Found', status: 'Pending', assignedTo: 'Reception', priority: 'Low', notes: 'Phone charger left behind', dueTime: '15:00' },
+   247→   247→  { id: 'hk-6', roomNumber: '303', type: 'Cleaning', status: 'Pending', assignedTo: 'Akua', priority: 'High', dueTime: '16:00', notes: 'Penthouse turnover' },
+   248→   248→  { id: 'hk-7', roomNumber: '102', type: 'Restock', status: 'Done', assignedTo: 'Grace', priority: 'Low', dueTime: '10:00' },
+   249→   249→]
+   250→   250→
+   251→   251→// ---------- CORPORATE ----------
+   252→   252→export const CORPORATE: CorporateAccount[] = [
+   253→   253→  { id: 'corp-1', name: 'MTN Ghana', type: 'Company', contact: 'Akosua Frimpong', phone: '+233 24 000 1111', negotiatedRate: 1150, contractEnd: daysFromNow(120), totalBookings: 42, totalRevenue: 48300, status: 'Active' },
+   254→   254→  { id: 'corp-2', name: 'Zenith Travels', type: 'Travel Agency', contact: 'Tunde Adebayo', phone: '+234 80 222 3333', negotiatedRate: 980, contractEnd: daysFromNow(60), totalBookings: 28, totalRevenue: 27440, status: 'Active' },
+   255→   255→  { id: 'corp-3', name: 'UNICEF West Africa', type: 'NGO', contact: 'Maria Gonzalez', phone: '+233 30 555 6666', negotiatedRate: 1050, contractEnd: daysFromNow(200), totalBookings: 19, totalRevenue: 19950, status: 'Active' },
+   256→   256→  { id: 'corp-4', name: 'University of Ghana', type: 'School', contact: 'Prof. Owusu', phone: '+233 30 777 8888', negotiatedRate: 720, contractEnd: daysFromNow(30), totalBookings: 15, totalRevenue: 10800, status: 'Negotiating' },
+   257→   257→  { id: 'corp-5', name: 'Ministry of Tourism', type: 'Government', contact: 'Hon. Adjei', phone: '+233 30 999 0000', negotiatedRate: 1250, contractEnd: daysAgo(10), totalBookings: 22, totalRevenue: 27500, status: 'Expired' },
+   258→   258→]
+   259→   259→
+   260→   260→// ---------- EXPERIENCES ----------
+   261→   261→export const EXPERIENCES: Experience[] = [
+   262→   262→  { id: 'exp-1', name: 'Airport Pickup (Kotoka)', category: 'Airport Pickup', price: 180, bookingsThisMonth: 34, revenueThisMonth: 6120, rating: 4.8, imageColor: '#0d9488' },
+   263→   263→  { id: 'exp-2', name: 'Cape Coast Castle Day Tour', category: 'Tour', price: 450, bookingsThisMonth: 18, revenueThisMonth: 8100, rating: 4.9, imageColor: '#b45309' },
+   264→   264→  { id: 'exp-3', name: 'Laundry Service (Daily)', category: 'Laundry', price: 80, bookingsThisMonth: 52, revenueThisMonth: 4160, rating: 4.6, imageColor: '#9333ea' },
+   265→   265→  { id: 'exp-4', name: 'Private Chef Dinner', category: 'Meal', price: 650, bookingsThisMonth: 9, revenueThisMonth: 5850, rating: 5.0, imageColor: '#be123c' },
+   266→   266→  { id: 'exp-5', name: 'Couples Spa Package', category: 'Spa', price: 520, bookingsThisMonth: 12, revenueThisMonth: 6240, rating: 4.7, imageColor: '#15803d' },
+   267→   267→  { id: 'exp-6', name: 'Chauffeured Car (Full Day)', category: 'Car Rental', price: 700, bookingsThisMonth: 7, revenueThisMonth: 4900, rating: 4.8, imageColor: '#a16207' },
+   268→   268→  { id: 'exp-7', name: 'Rooftop Event Space', category: 'Event', price: 2500, bookingsThisMonth: 3, revenueThisMonth: 7500, rating: 4.9, imageColor: '#0e7490' },
+   269→   269→  { id: 'exp-8', name: 'Conference Room (Half Day)', category: 'Conference', price: 1200, bookingsThisMonth: 5, revenueThisMonth: 6000, rating: 4.5, imageColor: '#c2410c' },
+   270→   270→]
+   271→   271→
+   272→   272→// ---------- AI AGENTS ----------
+   273→   273→export const AI_AGENTS: AIAgent[] = [
+   274→   274→  { id: 'agent-1', name: 'Kofi', role: 'Revenue Manager', status: 'Working', avatar: '💰', lastAction: 'Raised Booking.com rates 8% for next weekend', tasksCompleted: 142, color: '#b45309', description: 'Optimizes nightly pricing, monitors pace, and recommends rate changes across channels.' },
+   275→   275→  { id: 'agent-2', name: 'Ama', role: 'Marketing Manager', status: 'Active', avatar: '📣', lastAction: 'Drafted "Weekend Flash Sale" WhatsApp campaign', tasksCompleted: 98, color: '#be123c', description: 'Builds audiences, generates campaigns, and schedules multi-channel sends.' },
+   276→   276→  { id: 'agent-3', name: 'Yaw', role: 'Guest Success Manager', status: 'Active', avatar: '🤝', lastAction: 'Sent loyalty reboot to 18 VIP guests', tasksCompleted: 210, color: '#15803d', description: 'Converts OTA guests to direct, manages loyalty, and nurtures repeat bookings.' },
+   277→   277→  { id: 'agent-4', name: 'Abena', role: 'Pricing Analyst', status: 'Idle', avatar: '📊', lastAction: 'Competitor scan complete — 3 underpriced nights found', tasksCompleted: 76, color: '#9333ea', description: 'Analyzes competitor rates, seasonality, and demand to tune pricing.' },
+   278→   278→  { id: 'agent-5', name: 'Kwabena', role: 'OTA Manager', status: 'Active', avatar: '🔌', lastAction: 'Synced 18 rooms across 5 OTAs — 0 conflicts', tasksCompleted: 540, color: '#0d9488', description: 'Synchronizes calendars and inventory across all booking platforms.' },
+   279→   279→  { id: 'agent-6', name: 'Akosua', role: 'Reputation Manager', status: 'Working', avatar: '⭐', lastAction: 'Drafted replies to 2 pending reviews', tasksCompleted: 134, color: '#a16207', description: 'Monitors reviews, analyzes sentiment, and drafts responses.' },
+   280→   280→  { id: 'agent-7', name: 'Kofi Jr.', role: 'Sales Manager', status: 'Idle', avatar: '💼', lastAction: 'Renegotiated MTN Ghana contract', tasksCompleted: 61, color: '#0e7490', description: 'Manages corporate accounts and negotiates group rates.' },
+   281→   281→  { id: 'agent-8', name: 'Adwoa', role: 'Operations Manager', status: 'Active', avatar: '⚙️', lastAction: 'Reassigned housekeeping for early check-ins', tasksCompleted: 188, color: '#c2410c', description: 'Coordinates housekeeping, maintenance, and front desk operations.' },
+   282→   282→  { id: 'agent-9', name: 'Efua', role: 'Finance Analyst', status: 'Active', avatar: '🏦', lastAction: 'Flagged ₵4,200 in outstanding OTA commissions', tasksCompleted: 92, color: '#9333ea', description: 'Tracks revenue, expenses, commissions, and cash flow.' },
+   283→   283→  { id: 'agent-10', name: 'Nana', role: 'General Manager', status: 'Working', avatar: '👑', lastAction: 'Compiled morning insights brief for owner', tasksCompleted: 320, color: '#be123c', description: 'Synthesizes all agents\u2019 work into a daily brief and strategic recommendations.' },
+   284→   284→]
+   285→   285→
+   286→   286→// ---------- AI RECOMMENDATIONS ----------
+   287→   287→export const AI_RECOMMENDATIONS: AIRecommendation[] = [
+   288→   288→  { id: 'rec-1', type: 'occupancy', priority: 'High', title: 'Friday occupancy is only 42%', detail: '11 of 18 rooms sit empty this Friday. Demand is soft but your competitor Ibis Styles is at 88%.', action: 'Launch flash sale', impact: '+8 rooms · ₵6,400', agentId: 'agent-1' },
+   289→   289→  { id: 'rec-2', type: 'retention', priority: 'High', title: 'Send promotion to 48 lapsed guests', detail: '48 high-value guests haven\u2019t booked in 6-12 months. They averaged ₵1,800/stay previously.', action: 'Run "Loyalty Reboot"', impact: '+5 direct bookings · ₵9,000', agentId: 'agent-3' },
+   290→   290→  { id: 'rec-3', type: 'pricing', priority: 'Medium', title: 'Increase Booking.com pricing by 8%', detail: 'Your Booking.com rate is 14% below Ibis Styles while occupancy is healthy at 78%. Margin left on the table.', action: 'Adjust rates', impact: '+₵2,300/night', agentId: 'agent-1' },
+   291→   291→  { id: 'rec-4', type: 'conversion', priority: 'High', title: '12 OTA guests eligible for direct conversion', detail: '12 guests booked via Airbnb/Booking.com this month and match your direct-conversion profile.', action: 'Send loyalty invites', impact: 'Save ₵3,800 future commission', agentId: 'agent-3' },
+   292→   292→  { id: 'rec-5', type: 'marketing', priority: 'Medium', title: 'Offer free breakfast for next weekend', detail: 'Free breakfast historically lifts weekend conversions by 18% with near-zero cost.', action: 'Add weekend perk', impact: '+4 bookings', agentId: 'agent-2' },
+   293→   293→  { id: 'rec-6', type: 'reputation', priority: 'Medium', title: '2 negative/neutral reviews need responses', detail: 'Fatima (AC noise) and Linda (long check-in) are unanswered. Replying within 24h improves recovery rate.', action: 'Respond now', impact: '+0.2 rating', agentId: 'agent-6' },
+   294→   294→]
+   295→   295→
+   296→   296→// ---------- PRICING SUGGESTIONS ----------
+   297→   297→export const PRICING_SUGGESTIONS: PricingSuggestion[] = ROOMS.slice(0, 8).map((r, i) => {
+   298→   298→  const change = [8, 5, -3, 12, 6, 0, 10, 4][i]
+   299→   299→  const suggested = Math.round(r.baseRate * (1 + change / 100))
+   300→   300→  return {
+   301→   301→    roomId: r.id,
+   302→   302→    roomName: r.name,
+   303→   303→    date: daysFromNow(randInt(1, 14)),
+   304→   304→    currentRate: r.baseRate,
+   305→   305→    suggestedRate: suggested,
+   306→   306→    changePct: change,
+   307→   307→    reason: pick([
+   308→   308→      'Weekend demand spike + competitor pricing above market',
+   309→   309→      'Low occupancy forecast + last-minute gap',
+   310→   310→      'Local event (concert) driving demand',
+   311→   311→      'Healthy pace — optimize margin',
+   312→   312→      'Below competitor average by 11%',
+   313→   313→      'Off-season soft demand',
+   314→   314→      'Corporate conference nearby',
+   315→   315→      'Holiday weekend approaching',
+   316→   316→    ]),
+   317→   317→    confidence: randInt(72, 96),
+   318→   318→    factors: pick([['Occupancy', 'Competitors', 'Pace'], ['Seasonality', 'Events', 'History'], ['Weather', 'Competitors', 'Pace']]),
+   319→   319→  }
+   320→   320→})
+   321→   321→
+   322→   322→// ---------- FINANCIALS ----------
+   323→   323→export const FINANCIALS: FinancialMetric[] = (() => {
+   324→   324→  const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb']
+   325→   325→  return months.map((m, i) => {
+   326→   326→    const revenue = 180000 + i * 12000 + randInt(-8000, 12000)
+   327→   327→    const otaCommission = Math.round(revenue * (0.34 - i * 0.01))
+   328→   328→    const expenses = Math.round(revenue * (0.42 + rand() * 0.05))
+   329→   329→    return { month: m, revenue, expenses, otaCommission, profit: revenue - otaCommission - expenses }
+   330→   330→  })
+   331→   331→})()
+   332→   332→
+   333→   333→// ---------- INSIGHTS ----------
+   334→   334→export const INSIGHTS: Insight[] = [
+   335→   335→  { id: 'ins-1', date: daysAgo(0), category: 'Forecast', title: 'Tomorrow\u2019s occupancy: 67%', detail: '12 of 18 rooms sold. 6 rooms available — Friday is the weak spot at 42%.', severity: 'warning', action: 'Launch vacancy campaign' },
+   336→   336→  { id: 'ins-2', date: daysAgo(0), category: 'Opportunity', title: 'Direct booking % up 7pts this month', detail: 'Your direct conversion engine is working — 41% of bookings now direct vs 34% last month.', severity: 'success' },
+   337→   337→  { id: 'ins-3', date: daysAgo(0), category: 'Threat', title: 'Booking.com cancellation rate rising', detail: 'Booking.com cancellations hit 14% this month (avg 8%). Consider stricter policies.', severity: 'critical', action: 'Tighten cancellation policy' },
+   338→   338→  { id: 'ins-4', date: daysAgo(0), category: 'Pricing', title: 'Penthouse underpriced vs Kempinski', detail: 'Your penthouse (₵2,200) is 48% below Kempinski\u2019s entry suite with comparable ratings.', severity: 'info', action: 'Test ₵2,600 next weekend' },
+   339→   339→  { id: 'ins-5', date: daysAgo(0), category: 'Trend', title: 'Repeat guest rate climbing to 38%', detail: 'Loyalty program is paying off. VIP tier grew from 4 to 9 members this quarter.', severity: 'success' },
+   340→   340→  { id: 'ins-6', date: daysAgo(0), category: 'Forecast', title: 'Revenue forecast next 30 days: ₵312,000', detail: 'On pace for a record month if Friday gaps are filled.', severity: 'info' },
+   341→   341→]
+   342→   342→
+   343→   343→// ---------- CHANNELS ----------
+   344→   344→export const CHANNELS = [
+   345→   345→  { id: 'ch-airbnb', name: 'Airbnb', type: 'OTA', connected: true, syncStatus: 'Live', commission: 15, bookingsThisMonth: 28, revenueThisMonth: 72400, color: '#FF5A5F' },
+   346→   346→  { id: 'ch-booking', name: 'Booking.com', type: 'OTA', connected: true, syncStatus: 'Live', commission: 15, bookingsThisMonth: 41, revenueThisMonth: 106200, color: '#003580' },
+   347→   347→  { id: 'ch-expedia', name: 'Expedia', type: 'OTA', connected: true, syncStatus: 'Live', commission: 18, bookingsThisMonth: 9, revenueThisMonth: 19800, color: '#FFC72C' },
+   348→   348→  { id: 'ch-agoda', name: 'Agoda', type: 'OTA', connected: true, syncStatus: 'Syncing', commission: 17, bookingsThisMonth: 6, revenueThisMonth: 12100, color: '#5392F9' },
+   349→   349→  { id: 'ch-vrbo', name: 'Vrbo', type: 'OTA', connected: false, syncStatus: 'Not connected', commission: 10, bookingsThisMonth: 0, revenueThisMonth: 0, color: '#3D67FF' },
+   350→   350→  { id: 'ch-direct', name: 'Direct Website', type: 'Direct', connected: true, syncStatus: 'Live', commission: 0, bookingsThisMonth: 32, revenueThisMonth: 94600, color: '#0d9488' },
+   351→   351→  { id: 'ch-whatsapp', name: 'WhatsApp', type: 'Direct', connected: true, syncStatus: 'Live', commission: 0, bookingsThisMonth: 14, revenueThisMonth: 31200, color: '#25D366' },
+   352→   352→  { id: 'ch-walkin', name: 'Walk-in', type: 'Direct', connected: true, syncStatus: 'Live', commission: 0, bookingsThisMonth: 5, revenueThisMonth: 9800, color: '#b45309' },
+   353→   353→  { id: 'ch-phone', name: 'Phone', type: 'Direct', connected: true, syncStatus: 'Live', commission: 0, bookingsThisMonth: 7, revenueThisMonth: 15400, color: '#9333ea' },
+   354→   354→  { id: 'ch-facebook', name: 'Facebook', type: 'Social', connected: true, syncStatus: 'Live', commission: 0, bookingsThisMonth: 3, revenueThisMonth: 6900, color: '#1877F2' },
+   355→   355→  { id: 'ch-instagram', name: 'Instagram', type: 'Social', connected: true, syncStatus: 'Live', commission: 0, bookingsThisMonth: 4, revenueThisMonth: 9200, color: '#E4405F' },
+   356→   356→  { id: 'ch-email', name: 'Email', type: 'Direct', connected: true, syncStatus: 'Live', commission: 0, bookingsThisMonth: 2, revenueThisMonth: 4100, color: '#6b7280' },
+   357→   357→]
+   358→   358→
+   359→   359→// Source color mapping for calendar
+   360→   360→export const SOURCE_COLORS: Record<BookingSource, string> = {
+   361→   361→  'Airbnb': '#FF5A5F',
+   362→   362→  'Booking.com': '#003580',
+   363→   363→  'Expedia': '#e8a200',
+   364→   364→  'Agoda': '#5392F9',
+   365→   365→  'Vrbo': '#3D67FF',
+   366→   366→  'Direct Website': '#0d9488',
+   367→   367→  'Walk-in': '#b45309',
+   368→   368→  'Phone': '#9333ea',
+   369→   369→  'WhatsApp': '#25D366',
+   370→   370→  'Facebook': '#1877F2',
+   371→   371→  'Instagram': '#E4405F',
+   372→   372→  'Email': '#6b7280',
+   373→   373→  'Corporate': '#15803d',
+   374→   374→  'Referral': '#be123c',
+   375→   375→}
+   376→   376→
+   377→   377→// ---------- DERIVED METRICS ----------
+   378→   378→export function occupancyForDate(date: string): number {
+   379→   379→  const active = RESERVATIONS.filter(r =>
+   380→   380→    r.status !== 'Cancelled' && r.status !== 'No-show' &&
+   381→   381→    r.checkIn <= date && r.checkOut > date
+   382→   382→  )
+   383→   383→  const roomsBooked = new Set(active.flatMap(r => r.roomIds)).size
+   384→   384→  return Math.round((roomsBooked / PROPERTY.roomsTotal) * 100)
+   385→   385→}
+   386→   386→
+   387→   387→export function reservationsOnDate(date: string): Reservation[] {
+   388→   388→  return RESERVATIONS.filter(r =>
+   389→   389→    r.status !== 'Cancelled' && r.status !== 'No-show' &&
+   390→   390→    r.checkIn <= date && r.checkOut > date
+   391→   391→  )
+   392→   392→}
+   393→   393→
