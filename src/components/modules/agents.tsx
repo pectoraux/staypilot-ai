@@ -14,9 +14,9 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
-import {
-  AI_AGENTS, AI_RECOMMENDATIONS, PROPERTY,
-} from '@/lib/data'
+import { AI_AGENTS, PROPERTY } from '@/lib/data'
+import { CASCADES, DIGITAL_TWIN } from '@/lib/data-v2'
+import type { Cascade } from '@/lib/data-v2'
 import { StatCard, SectionHeader, StatusPill } from '@/components/shared'
 import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -24,10 +24,26 @@ import ReactMarkdown from 'react-markdown'
 import type { AIAgent } from '@/lib/types'
 import {
   Bot, Send, Sparkles, Activity, MessageCircle, Crown, Zap, Cpu,
-  CheckCircle2, AlertCircle, RefreshCw, Brain,
+  CheckCircle2, AlertCircle, RefreshCw, Brain, Workflow,
+  Check, Clock,
 } from 'lucide-react'
 
-// ---------- per-agent chat types ----------
+// ============================================================
+//  Workforce — 12 specialized autonomous agents collaborating 24/7
+// ============================================================
+
+// Augment V1 AI_AGENTS (10) with 2 more to reach the 12-agent autonomous team
+const EXTRA_AGENTS: AIAgent[] = [
+  { id: 'agent-11', name: 'Kwesi', role: 'Housekeeping Supervisor', status: 'Active', avatar: '🧹', lastAction: 'Reassigned 3 room turnovers ahead of early check-ins', tasksCompleted: 167, color: '#15803d', description: 'Optimizes cleaning schedules, turn-over times, and inspection checklists across the property.' },
+  { id: 'agent-12', name: 'Esi', role: 'Maintenance Manager', status: 'Working', avatar: '🔧', lastAction: 'Scheduled emergency AC repair for room 102', tasksCompleted: 89, color: '#c2410c', description: 'Prevents and resolves maintenance issues before they impact guest experience.' },
+]
+
+const TEAM: AIAgent[] = [...AI_AGENTS, ...EXTRA_AGENTS]
+const AGENT_BY_ID: Record<string, AIAgent> = Object.fromEntries(
+  TEAM.map(a => [a.id, a]),
+)
+
+// ---------- per-agent chat ----------
 interface AgentMsg {
   id: string
   role: 'user' | 'assistant'
@@ -62,35 +78,48 @@ function StatusDot({ status }: { status: AIAgent['status'] }) {
 function AgentCard({
   agent,
   onChat,
+  index,
 }: {
   agent: AIAgent
   onChat: (a: AIAgent) => void
+  index: number
 }) {
   return (
     <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.025, 0.4), type: 'spring', stiffness: 300, damping: 22 }}
       whileHover={{ y: -3 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 22 }}
     >
       <Card className="group relative h-full overflow-hidden p-4">
-        {/* accent glow */}
         <div
-          className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl transition-opacity group-hover:opacity-40"
+          className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl transition-opacity group-hover:opacity-45"
           style={{ backgroundColor: agent.color }}
         />
-        {/* top accent bar */}
         <div
           className="absolute inset-x-0 top-0 h-0.5"
           style={{ backgroundColor: agent.color }}
         />
         <div className="relative flex items-start gap-3">
           <div
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl shadow-inner"
+            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl shadow-inner"
             style={{
               backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
               border: `1px solid ${agent.color}40`,
             }}
           >
             <span>{agent.avatar}</span>
+            {(agent.status === 'Active' || agent.status === 'Working') && (
+              <span
+                className="absolute -right-1 -top-1 h-3 w-3 rounded-full ring-2 ring-card"
+                style={{ backgroundColor: agent.status === 'Active' ? '#16a34a' : '#ea580c' }}
+              >
+                <span
+                  className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70"
+                  style={{ backgroundColor: agent.status === 'Active' ? '#16a34a' : '#ea580c' }}
+                />
+              </span>
+            )}
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-2">
@@ -104,16 +133,23 @@ function AgentCard({
         </div>
 
         <p className="relative mt-3 line-clamp-2 text-xs text-muted-foreground">
-          <span className="font-medium text-foreground/80">Last action: </span>
+          <span className="font-medium text-foreground/80">Last: </span>
           {agent.lastAction}
         </p>
 
         <div className="relative mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-            <span className="font-semibold text-foreground">{agent.tasksCompleted}</span>
-            <span>tasks done</span>
-          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="flex cursor-default items-center gap-1.5 text-xs text-muted-foreground">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="font-semibold text-foreground">{agent.tasksCompleted}</span>
+                  <span>tasks</span>
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>All-time tasks completed by {agent.name}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
           <Button
             size="sm"
             variant="outline"
@@ -181,7 +217,7 @@ function AgentChatDialog({
       const data = await res.json()
       const reply =
         data?.reply ??
-        'I am analyzing the latest data — please give me a moment and try again.'
+        `I'm ${agent.name}, your ${agent.role}. I'm reviewing the latest signals and will be with you shortly.`
       const aiMsg: AgentMsg = {
         id: `a-${Date.now()}`,
         role: 'assistant',
@@ -233,12 +269,7 @@ function AgentChatDialog({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8"
-                      onClick={reset}
-                    >
+                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={reset}>
                       <RefreshCw className="h-3.5 w-3.5" />
                     </Button>
                   </TooltipTrigger>
@@ -251,7 +282,6 @@ function AgentChatDialog({
               {agent.description}
             </p>
 
-            {/* messages */}
             <div
               ref={scrollRef}
               className="scroll-area-fancy flex-1 space-y-3 overflow-y-auto px-4 py-4"
@@ -268,15 +298,13 @@ function AgentChatDialog({
                   >
                     {agent.avatar}
                   </div>
-                  <p className="text-sm font-semibold">
-                    Chat with {agent.name}
-                  </p>
+                  <p className="text-sm font-semibold">Chat with {agent.name}</p>
                   <p className="max-w-xs text-xs text-muted-foreground">
-                    Ask about {agent.role.toLowerCase()} work — pricing,
-                    campaigns, retention, or any data point.
+                    Ask {agent.name} about {agent.role.toLowerCase()} work —
+                    pricing, campaigns, retention, or any data point.
                   </p>
                   <div className="mt-2 flex flex-wrap justify-center gap-2">
-                    {SUGGESTED_QUESTIONS[agent.role]?.map((q) => (
+                    {(SUGGESTED_QUESTIONS[agent.role] ?? SUGGESTED_QUESTIONS.default).map((q) => (
                       <button
                         key={q}
                         onClick={() => send(q)}
@@ -321,9 +349,7 @@ function AgentChatDialog({
                           </span>
                         </div>
                       )}
-                      <p className="whitespace-pre-wrap break-words leading-relaxed">
-                        {m.content}
-                      </p>
+                      <p className="whitespace-pre-wrap break-words leading-relaxed">{m.content}</p>
                       <p
                         className={cn(
                           'mt-1 text-right text-[10px]',
@@ -345,10 +371,7 @@ function AgentChatDialog({
                   <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-muted px-3 py-2.5">
                     <span
                       className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
-                      style={{
-                        backgroundColor: `${agent.color}22`,
-                        color: agent.color,
-                      }}
+                      style={{ backgroundColor: `${agent.color}22`, color: agent.color }}
                     >
                       <Sparkles className="h-2.5 w-2.5" /> {agent.name}
                     </span>
@@ -367,7 +390,6 @@ function AgentChatDialog({
               )}
             </div>
 
-            {/* input */}
             <div className="flex items-center gap-2 border-t border-border/60 px-3 py-3">
               <Input
                 value={input}
@@ -410,56 +432,229 @@ function AgentChatDialog({
 
 // suggested opening questions per role
 const SUGGESTED_QUESTIONS: Record<string, string[]> = {
-  'Revenue Manager': [
-    'What rates should I set this weekend?',
-    'Where are we leaving margin on the table?',
-  ],
-  'Marketing Manager': [
-    'Draft a campaign for empty Friday rooms',
-    'Which segment should I target next?',
-  ],
-  'Guest Success Manager': [
-    'Which OTA guests should I convert?',
-    'Who are my most at-risk VIPs?',
-  ],
-  'Pricing Analyst': [
-    'How do my rates compare to competitors?',
-    'What nights are underpriced?',
-  ],
-  'OTA Manager': [
-    'Any calendar conflicts today?',
-    'How is inventory syncing?',
-  ],
-  'Reputation Manager': [
-    'Which reviews need responses?',
-    'What is our sentiment trend?',
-  ],
-  'Sales Manager': [
-    'Which corporate contracts are renewing?',
-    'Best group-rate opportunity?',
-  ],
-  'Operations Manager': [
-    'Any bottlenecks in housekeeping?',
-    'Which rooms block check-ins?',
-  ],
-  'Finance Analyst': [
-    'Summarize this month\'s cash flow',
-    'Where are commissions leaking?',
-  ],
-  'General Manager': [
-    'Give me the morning brief',
-    'What needs my attention today?',
-  ],
+  'Revenue Manager': ['What rates should I set this weekend?', 'Where are we leaving margin on the table?'],
+  'Revenue Director': ['What rates should I set this weekend?', 'Where are we leaving margin on the table?'],
+  'Marketing Manager': ['Draft a campaign for empty Friday rooms', 'Which segment should I target next?'],
+  'Marketing Director': ['Draft a campaign for empty Friday rooms', 'Which segment should I target next?'],
+  'Guest Success Manager': ['Which OTA guests should I convert?', 'Who are my most at-risk VIPs?'],
+  'Guest Relations Manager': ['Which OTA guests should I convert?', 'Who are my most at-risk VIPs?'],
+  'CRM Manager': ['Which lapsed VIPs should I reach out to?', 'How is retention trending?'],
+  'Pricing Analyst': ['How do my rates compare to competitors?', 'What nights are underpriced?'],
+  'OTA Manager': ['Any calendar conflicts today?', 'How is inventory syncing?'],
+  'Reputation Manager': ['Which reviews need responses?', 'What is our sentiment trend?'],
+  'Sales Manager': ['Which corporate contracts are renewing?', 'Best group-rate opportunity?'],
+  'Operations Manager': ['Any bottlenecks in housekeeping?', 'Which rooms block check-ins?'],
+  'Finance Analyst': ['Summarize this month\'s cash flow', 'Where are commissions leaking?'],
+  'Finance Manager': ['Summarize this month\'s cash flow', 'Where are commissions leaking?'],
+  'Housekeeping Supervisor': ['Which rooms need urgent turnaround?', 'How is the inspection pipeline?'],
+  'Maintenance Manager': ['Which issues should we prioritize?', 'Any preventive tasks overdue?'],
+  'General Manager': ['Give me the morning brief', 'What needs my attention today?'],
+  default: ['What did you do this morning?', 'What needs my approval?'],
 }
 
-// ---------- activity feed ----------
+// ============================================================
+//  Cascade flow — the centerpiece: live org executing
+// ============================================================
+
+function parseMinutesAgo(ts: string): number {
+  if (ts === 'now') return 0
+  if (ts === '—' || !ts) return Number.POSITIVE_INFINITY
+  const hMatch = ts.match(/(\d+)\s*h\s*(?:(\d+)\s*m)?/)
+  if (hMatch) {
+    const h = parseInt(hMatch[1]) || 0
+    const m = parseInt(hMatch[2] || '0') || 0
+    return h * 60 + m
+  }
+  const mMatch = ts.match(/(\d+)\s*min/)
+  if (mMatch) return parseInt(mMatch[1])
+  return 9999
+}
+
+function CascadeStepNode({
+  status,
+  agent,
+  index,
+}: {
+  status: 'done' | 'active' | 'pending'
+  agent: AIAgent | undefined
+  index: number
+}) {
+  const color = agent?.color ?? '#94a3b8'
+  const ringColor =
+    status === 'done' ? '#10b981' : status === 'active' ? '#ea580c' : '#94a3b8'
+  return (
+    <div className="relative shrink-0">
+      <div
+        className="relative flex h-10 w-10 items-center justify-center rounded-xl text-lg shadow-inner"
+        style={{
+          backgroundImage: `linear-gradient(135deg, ${color}33, ${color}11)`,
+          border: `1.5px solid ${ringColor}`,
+          boxShadow: status === 'active' ? `0 0 0 4px ${ringColor}22` : undefined,
+        }}
+      >
+        <span>{agent?.avatar ?? '🤖'}</span>
+        {/* step number badge */}
+        <span
+          className="absolute -left-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+          style={{ backgroundColor: ringColor }}
+        >
+          {index}
+        </span>
+        {/* status dot bottom-right */}
+        <span
+          className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full ring-2 ring-card"
+          style={{ backgroundColor: ringColor }}
+        >
+          {status === 'done' && <Check className="h-2 w-2 text-white" strokeWidth={4} />}
+          {status === 'active' && (
+            <>
+              <span
+                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70"
+                style={{ backgroundColor: ringColor }}
+              />
+              <span className="relative h-1.5 w-1.5 rounded-full bg-white" />
+            </>
+          )}
+          {status === 'pending' && (
+            <Clock className="h-1.5 w-1.5 text-white" strokeWidth={3} />
+          )}
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function CascadeFlow({ cascade, index }: { cascade: Cascade; index: number }) {
+  const isRunning = cascade.status === 'running'
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.08 }}
+    >
+      <Card className="flex h-full flex-col p-0 overflow-hidden">
+        {/* Trigger banner */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-rose-500/10 p-4">
+          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-orange-500/20 blur-2xl" />
+          <div className="relative flex items-start gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow">
+              <Zap className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 mb-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                  Trigger
+                </span>
+                {isRunning && (
+                  <Badge
+                    variant="outline"
+                    className="gap-1 px-1.5 py-0 text-[9px] font-semibold text-orange-600 dark:text-orange-400 border-orange-500/30 bg-orange-500/10"
+                  >
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+                    RUNNING
+                  </Badge>
+                )}
+              </div>
+              <p className="text-xs font-semibold leading-snug text-foreground">
+                {cascade.trigger}
+              </p>
+              <p className="mt-1 text-[10px] text-muted-foreground">Started {cascade.startedAt}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Steps */}
+        <div className="relative flex-1 px-4 py-4">
+          {/* vertical connector line */}
+          <div className="absolute left-[36px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-orange-500/50 via-border to-emerald-500/50" />
+
+          <ol className="space-y-3">
+            {cascade.steps.map((step, i) => {
+              const agent = AGENT_BY_ID[step.agentId]
+              return (
+                <motion.li
+                  key={`${cascade.id}-step-${i}`}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.15 + i * 0.07 }}
+                  className="relative flex items-start gap-3"
+                >
+                  {/* node sits above the line */}
+                  <div className="relative z-10 bg-card">
+                    <CascadeStepNode status={step.status} agent={agent} index={i + 1} />
+                  </div>
+                  <div className="min-w-0 flex-1 pt-0.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-semibold text-foreground">
+                          {step.agent}{' '}
+                          <span className="font-normal text-muted-foreground">· {step.role}</span>
+                        </p>
+                        <p className="mt-0.5 text-xs leading-snug text-foreground/85">
+                          {step.action}
+                        </p>
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+                            step.status === 'done' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+                            step.status === 'active' && 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+                            step.status === 'pending' && 'bg-slate-500/15 text-slate-500 dark:text-slate-400',
+                          )}
+                        >
+                          {step.status === 'done' && <Check className="h-2 w-2" strokeWidth={4} />}
+                          {step.status === 'active' && (
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+                          )}
+                          {step.status === 'pending' && <Clock className="h-2 w-2" />}
+                          {step.status === 'done' ? 'done' : step.status === 'active' ? 'active' : 'pending'}
+                        </span>
+                        <p className="mt-0.5 text-[9px] text-muted-foreground">{step.timestamp}</p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.li>
+              )
+            })}
+          </ol>
+        </div>
+
+        {/* Outcome banner */}
+        <div className="relative overflow-hidden border-t border-emerald-500/20 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/5 p-4">
+          <div className="absolute -left-6 -bottom-6 h-20 w-20 rounded-full bg-emerald-500/15 blur-2xl" />
+          <div className="relative flex items-start gap-2.5">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                Projected Outcome
+              </span>
+              <p className="text-xs font-semibold leading-snug text-foreground">
+                {cascade.outcome}
+              </p>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </motion.div>
+  )
+}
+
+// ============================================================
+//  Activity feed — live timeline of recent agent actions
+// ============================================================
+
 interface ActivityItem {
   id: string
-  agent: AIAgent
+  agent: AIAgent | undefined
+  agentName: string
+  role: string
   action: string
   ts: string
-  kind: 'action' | 'recommendation'
-  detail?: string
+  kind: 'action' | 'cascade'
+  status?: 'done' | 'active' | 'pending'
 }
 
 function buildActivity(): ActivityItem[] {
@@ -469,33 +664,35 @@ function buildActivity(): ActivityItem[] {
     items.push({
       id: `act-${a.id}`,
       agent: a,
+      agentName: a.name,
+      role: a.role,
       action: a.lastAction,
-      ts: `${i * 7 + 3} min ago`,
-      kind: 'action' as const,
+      ts: `${i * 5 + 4} min ago`,
+      kind: 'action',
     })
   })
-  // from recommendations
-  AI_RECOMMENDATIONS.slice(0, 3).forEach((r, i) => {
-    const agent = AI_AGENTS.find((a) => a.id === r.agentId) ?? AI_AGENTS[0]
-    items.push({
-      id: `rec-${r.id}`,
-      agent,
-      action: `Flagged: ${r.title}`,
-      ts: `${i * 12 + 18} min ago`,
-      kind: 'recommendation' as const,
-      detail: r.action,
+  // from cascade steps (exclude pending '—')
+  CASCADES.forEach((c) => {
+    c.steps.forEach((s, i) => {
+      if (s.timestamp === '—' || !s.timestamp) return
+      items.push({
+        id: `cas-${c.id}-${i}`,
+        agent: AGENT_BY_ID[s.agentId],
+        agentName: s.agent,
+        role: s.role,
+        action: s.action,
+        ts: s.timestamp,
+        kind: 'cascade',
+        status: s.status,
+      })
     })
   })
-  // sort by a fake "minutes ago" ascending extracted from ts
-  return items.sort((a, b) => {
-    const am = parseInt(a.ts) || 0
-    const bm = parseInt(b.ts) || 0
-    return am - bm
-  })
+  return items.sort((a, b) => parseMinutesAgo(a.ts) - parseMinutesAgo(b.ts))
 }
 
 function ActivityFeed() {
   const items = React.useMemo(() => buildActivity(), [])
+  const top = items.slice(0, 14)
   return (
     <Card className="flex h-full flex-col p-4">
       <div className="flex items-center justify-between">
@@ -504,8 +701,8 @@ function ActivityFeed() {
             <Activity className="h-4 w-4" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold">Agent Activity</h3>
-            <p className="text-[11px] text-muted-foreground">Live actions across the team</p>
+            <h3 className="text-sm font-semibold">Live Activity</h3>
+            <p className="text-[11px] text-muted-foreground">Agent actions & collaborations</p>
           </div>
         </div>
         <Badge variant="secondary" className="gap-1 text-[10px]">
@@ -516,54 +713,53 @@ function ActivityFeed() {
       <Separator className="my-3" />
       <ScrollArea className="scroll-area-fancy -mx-1 flex-1 pr-1" style={{ maxHeight: '420px' }}>
         <ol className="relative ml-2 space-y-1 border-l border-border/60 pl-4">
-          {items.map((item, idx) => (
-            <motion.li
-              key={item.id}
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.04 }}
-              className="relative pb-3"
-            >
-              <span
-                className="absolute -left-[1.40rem] top-1 flex h-3 w-3 items-center justify-center rounded-full ring-2 ring-card"
-                style={{ backgroundColor: item.agent.color }}
-              />
-              <div className="flex items-start gap-2">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-sm">{item.agent.avatar}</span>
-                    <span className="text-xs font-semibold">{item.agent.name}</span>
-                    <span className="text-[10px] text-muted-foreground">
-                      · {item.agent.role}
-                    </span>
+          {top.map((item, idx) => {
+            const color = item.agent?.color ?? '#94a3b8'
+            return (
+              <motion.li
+                key={item.id}
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: Math.min(idx * 0.03, 0.4) }}
+                className="relative pb-3"
+              >
+                <span
+                  className="absolute -left-[1.40rem] top-1 flex h-3 w-3 items-center justify-center rounded-full ring-2 ring-card"
+                  style={{ backgroundColor: color }}
+                />
+                <div className="flex items-start gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-sm">{item.agent?.avatar ?? '🤖'}</span>
+                      <span className="text-xs font-semibold">{item.agentName}</span>
+                      <span className="text-[10px] text-muted-foreground">· {item.role}</span>
+                      {item.kind === 'cascade' && (
+                        <Badge
+                          variant="outline"
+                          className="shrink-0 gap-0.5 border-violet-500/40 px-1 py-0 text-[9px] text-violet-600 dark:text-violet-400"
+                        >
+                          <Workflow className="h-2 w-2" />
+                          cascade
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="mt-0.5 text-xs text-foreground/90">{item.action}</p>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{item.ts}</p>
                   </div>
-                  <p className="mt-0.5 text-xs text-foreground/90">{item.action}</p>
-                  {item.detail && (
-                    <p className="mt-0.5 text-[11px] italic text-muted-foreground">
-                      → {item.detail}
-                    </p>
-                  )}
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">{item.ts}</p>
                 </div>
-                {item.kind === 'recommendation' && (
-                  <Badge
-                    variant="outline"
-                    className="shrink-0 gap-1 border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
-                  >
-                    <Zap className="h-2.5 w-2.5" />
-                    rec
-                  </Badge>
-                )}
-              </div>
-            </motion.li>
-          ))}
+              </motion.li>
+            )
+          })}
         </ol>
       </ScrollArea>
     </Card>
   )
 }
 
-// ---------- morning brief ----------
+// ============================================================
+//  Morning brief generator
+// ============================================================
+
 function MorningBrief() {
   const [brief, setBrief] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(false)
@@ -595,7 +791,7 @@ function MorningBrief() {
             <Crown className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold">Morning Brief</h3>
+            <h3 className="text-sm font-semibold">CEO Morning Brief</h3>
             <p className="text-[11px] text-muted-foreground">
               Nana, your General Manager AI, synthesizes the day ahead.
             </p>
@@ -612,7 +808,7 @@ function MorningBrief() {
           ) : (
             <Sparkles className="h-3.5 w-3.5" />
           )}
-          {loading ? 'Generating…' : brief ? 'Regenerate' : 'Generate today\'s brief'}
+          {loading ? 'Generating…' : brief ? 'Regenerate' : 'Generate brief'}
         </Button>
       </div>
 
@@ -637,7 +833,7 @@ function MorningBrief() {
           </div>
           <p className="text-sm font-medium">No brief yet today</p>
           <p className="max-w-xs text-xs text-muted-foreground">
-            Generate a 60-second snapshot of today's threats, opportunities, and top 3 recommendations.
+            Generate a 60-second snapshot of today&apos;s threats, opportunities, and top 3 recommendations.
           </p>
         </div>
       )}
@@ -673,16 +869,19 @@ function MorningBrief() {
   )
 }
 
-// ---------- main ----------
+// ============================================================
+//  Main module
+// ============================================================
+
 export function AgentsModule() {
   const [chatAgent, setChatAgent] = React.useState<AIAgent | null>(null)
   const [chatOpen, setChatOpen] = React.useState(false)
 
-  const totalTasks = AI_AGENTS.reduce((s, a) => s + a.tasksCompleted, 0)
-  const activeNow = AI_AGENTS.filter(
-    (a) => a.status === 'Active' || a.status === 'Working',
-  ).length
-  const openRecs = AI_RECOMMENDATIONS.length
+  const totalTasks = TEAM.reduce((s, a) => s + a.tasksCompleted, 0)
+  const activeNow = TEAM.filter((a) => a.status === 'Active' || a.status === 'Working').length
+  const approvalsPending = DIGITAL_TWIN.liveMetrics.approvalsPending
+  const autoActions = DIGITAL_TWIN.liveMetrics.autoActionsToday
+  const tasksToday = DIGITAL_TWIN.liveMetrics.aiActionsToday
 
   function openChat(a: AIAgent) {
     setChatAgent(a)
@@ -693,15 +892,15 @@ export function AgentsModule() {
     <div className="space-y-6">
       {/* header */}
       <SectionHeader
-        title="AI Agents"
-        description="Instead of one chatbot, StayPilot AI runs a team of specialized agents that collaborate 24/7."
+        title="AI Workforce — 12 specialized agents collaborating 24/7"
+        description="They don't just answer questions. They detect problems, create tasks for each other, and execute autonomously."
         action={
           <Badge
             variant="secondary"
             className="hidden items-center gap-1.5 px-3 py-1.5 text-xs sm:inline-flex"
           >
             <Cpu className="h-3.5 w-3.5 text-orange-500" />
-            {AI_AGENTS.length} agents online
+            {TEAM.length} agents online
           </Badge>
         }
       />
@@ -720,11 +919,11 @@ export function AgentsModule() {
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   Each agent owns a domain — pricing, marketing, retention, reputation, ops —
-                  and reports into one shared brief for you every morning.
+                  and creates tasks for other agents when they detect a problem.
                 </p>
               </div>
             </div>
-            <div className="flex shrink-0 items-center gap-3 text-xs">
+            <div className="flex shrink-0 flex-wrap items-center gap-3 text-xs">
               <div className="flex items-center gap-1.5">
                 <StatusDot status="Active" />
                 <span className="text-muted-foreground">Active</span>
@@ -743,10 +942,10 @@ export function AgentsModule() {
       </Card>
 
       {/* stats */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatCard
           label="Total agents"
-          value={String(AI_AGENTS.length)}
+          value={String(TEAM.length)}
           sub="specialized roles"
           accent="brand"
           icon={<Bot className="h-5 w-5" />}
@@ -754,62 +953,107 @@ export function AgentsModule() {
         <StatCard
           label="Active now"
           value={String(activeNow)}
-          sub={`${AI_AGENTS.length - activeNow} idle`}
+          sub={`${TEAM.length - activeNow} idle`}
           accent="teal"
           icon={<Activity className="h-5 w-5" />}
           trend={8}
         />
         <StatCard
-          label="Tasks completed"
-          value={totalTasks.toLocaleString()}
-          sub="all-time · across team"
+          label="Tasks today"
+          value={tasksToday.toLocaleString()}
+          sub="across the team"
           accent="gold"
           icon={<CheckCircle2 className="h-5 w-5" />}
           trend={14}
         />
         <StatCard
-          label="Recommendations open"
-          value={String(openRecs)}
-          sub="awaiting your decision"
+          label="Approvals pending"
+          value={String(approvalsPending)}
+          sub="awaiting your call"
           accent="rose"
           icon={<AlertCircle className="h-5 w-5" />}
         />
+        <StatCard
+          label="Auto-actions today"
+          value={autoActions.toLocaleString()}
+          sub="executed without staff"
+          accent="violet"
+          icon={<Zap className="h-5 w-5" />}
+        />
       </div>
 
-      {/* main grid */}
+      {/* workforce org grid + activity column */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_360px]">
-        {/* agent grid */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold text-muted-foreground">
-              Agent team
+              Workforce
             </h3>
             <span className="text-[11px] text-muted-foreground">
-              Click any agent to chat
+              {totalTasks.toLocaleString()} all-time tasks · click any agent to chat
             </span>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {AI_AGENTS.map((agent) => (
-              <AgentCard key={agent.id} agent={agent} onChat={openChat} />
+            {TEAM.map((agent, i) => (
+              <AgentCard key={agent.id} agent={agent} onChat={openChat} index={i} />
             ))}
           </div>
         </div>
 
-        {/* right column: activity feed + morning brief */}
         <div className="space-y-5">
           <MorningBrief />
           <ActivityFeed />
         </div>
       </div>
 
+      {/* Cascade section — the centerpiece */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-orange-500/10 text-violet-600 dark:text-violet-400">
+                <Workflow className="h-4 w-4" />
+              </div>
+              <h3 className="text-base font-bold">Live Collaboration Cascades</h3>
+              <Badge variant="outline" className="gap-1 text-[10px] border-orange-500/40 text-orange-600 dark:text-orange-400">
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+                {CASCADES.length} running
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              When one agent detects a problem, it creates tasks for other agents.
+              Watch the team execute end-to-end — without staff intervention.
+            </p>
+          </div>
+          <div className="hidden items-center gap-3 text-[10px] text-muted-foreground sm:flex">
+            <div className="flex items-center gap-1.5">
+              <span className="flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-white">
+                <Check className="h-2 w-2" strokeWidth={4} />
+              </span>
+              done
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-3 w-3 animate-pulse rounded-full bg-orange-500" />
+              active
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="flex h-3 w-3 items-center justify-center rounded-full bg-slate-400 text-white">
+                <Clock className="h-2 w-2" />
+              </span>
+              pending
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {CASCADES.map((cascade, i) => (
+            <CascadeFlow key={cascade.id} cascade={cascade} index={i} />
+          ))}
+        </div>
+      </div>
+
       {/* agent chat dialog */}
-      <AgentChatDialog
-        agent={chatAgent}
-        open={chatOpen}
-        onOpenChange={setChatOpen}
-      />
+      <AgentChatDialog agent={chatAgent} open={chatOpen} onOpenChange={setChatOpen} />
     </div>
   )
 }
-
-

@@ -1,0 +1,816 @@
+     1→'use client'
+     2→
+     3→import * as React from 'react'
+     4→import { Card } from '@/components/ui/card'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Input } from '@/components/ui/input'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import { Separator } from '@/components/ui/separator'
+    10→import {
+    11→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+    12→} from '@/components/ui/dialog'
+    13→import {
+    14→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    15→} from '@/components/ui/tooltip'
+    16→import { cn } from '@/lib/utils'
+    17→import {
+    18→  AI_AGENTS, AI_RECOMMENDATIONS, PROPERTY,
+    19→} from '@/lib/data'
+    20→import { StatCard, SectionHeader, StatusPill } from '@/components/shared'
+    21→import { toast } from 'sonner'
+    22→import { motion, AnimatePresence } from 'framer-motion'
+    23→import ReactMarkdown from 'react-markdown'
+    24→import type { AIAgent } from '@/lib/types'
+    25→import {
+    26→  Bot, Send, Sparkles, Activity, MessageCircle, Crown, Zap, Cpu,
+    27→  CheckCircle2, AlertCircle, RefreshCw, Brain,
+    28→} from 'lucide-react'
+    29→
+    30→// ---------- per-agent chat types ----------
+    31→interface AgentMsg {
+    32→  id: string
+    33→  role: 'user' | 'assistant'
+    34→  content: string
+    35→  ts: string
+    36→}
+    37→
+    38→const now = () =>
+    39→  new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    40→
+    41→// ---------- status pulse dot ----------
+    42→function StatusDot({ status }: { status: AIAgent['status'] }) {
+    43→  const color =
+    44→    status === 'Active' ? '#16a34a' : status === 'Working' ? '#ea580c' : '#94a3b8'
+    45→  return (
+    46→    <span className="relative flex h-2.5 w-2.5">
+    47→      {(status === 'Active' || status === 'Working') && (
+    48→        <span
+    49→          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+    50→          style={{ backgroundColor: color }}
+    51→        />
+    52→      )}
+    53→      <span
+    54→        className="relative inline-flex h-2.5 w-2.5 rounded-full"
+    55→        style={{ backgroundColor: color }}
+    56→      />
+    57→    </span>
+    58→  )
+    59→}
+    60→
+    61→// ---------- agent card ----------
+    62→function AgentCard({
+    63→  agent,
+    64→  onChat,
+    65→}: {
+    66→  agent: AIAgent
+    67→  onChat: (a: AIAgent) => void
+    68→}) {
+    69→  return (
+    70→    <motion.div
+    71→      whileHover={{ y: -3 }}
+    72→      transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+    73→    >
+    74→      <Card className="group relative h-full overflow-hidden p-4">
+    75→        {/* accent glow */}
+    76→        <div
+    77→          className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl transition-opacity group-hover:opacity-40"
+    78→          style={{ backgroundColor: agent.color }}
+    79→        />
+    80→        {/* top accent bar */}
+    81→        <div
+    82→          className="absolute inset-x-0 top-0 h-0.5"
+    83→          style={{ backgroundColor: agent.color }}
+    84→        />
+    85→        <div className="relative flex items-start gap-3">
+    86→          <div
+    87→            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl shadow-inner"
+    88→            style={{
+    89→              backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
+    90→              border: `1px solid ${agent.color}40`,
+    91→            }}
+    92→          >
+    93→            <span>{agent.avatar}</span>
+    94→          </div>
+    95→          <div className="min-w-0 flex-1">
+    96→            <div className="flex items-center justify-between gap-2">
+    97→              <p className="truncate text-sm font-bold">{agent.name}</p>
+    98→              <StatusPill status={agent.status} />
+    99→            </div>
+   100→            <p className="truncate text-xs font-medium text-muted-foreground">
+   101→              {agent.role}
+   102→            </p>
+   103→          </div>
+   104→        </div>
+   105→
+   106→        <p className="relative mt-3 line-clamp-2 text-xs text-muted-foreground">
+   107→          <span className="font-medium text-foreground/80">Last action: </span>
+   108→          {agent.lastAction}
+   109→        </p>
+   110→
+   111→        <div className="relative mt-3 flex items-center justify-between">
+   112→          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   113→            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+   114→            <span className="font-semibold text-foreground">{agent.tasksCompleted}</span>
+   115→            <span>tasks done</span>
+   116→          </div>
+   117→          <Button
+   118→            size="sm"
+   119→            variant="outline"
+   120→            onClick={() => onChat(agent)}
+   121→            className="h-7 gap-1.5 px-2.5 text-xs"
+   122→            style={{ borderColor: `${agent.color}55`, color: agent.color }}
+   123→          >
+   124→            <MessageCircle className="h-3.5 w-3.5" />
+   125→            Chat
+   126→          </Button>
+   127→        </div>
+   128→      </Card>
+   129→    </motion.div>
+   130→  )
+   131→}
+   132→
+   133→// ---------- agent chat dialog ----------
+   134→function AgentChatDialog({
+   135→  agent,
+   136→  open,
+   137→  onOpenChange,
+   138→}: {
+   139→  agent: AIAgent | null
+   140→  open: boolean
+   141→  onOpenChange: (v: boolean) => void
+   142→}) {
+   143→  const [histories, setHistories] = React.useState<Record<string, AgentMsg[]>>({})
+   144→  const [input, setInput] = React.useState('')
+   145→  const [sending, setSending] = React.useState(false)
+   146→  const scrollRef = React.useRef<HTMLDivElement>(null)
+   147→
+   148→  const messages = agent ? histories[agent.id] ?? [] : []
+   149→
+   150→  React.useEffect(() => {
+   151→    const el = scrollRef.current
+   152→    if (el) el.scrollTop = el.scrollHeight
+   153→  }, [messages.length, sending, agent?.id])
+   154→
+   155→  async function send(text: string) {
+   156→    const trimmed = text.trim()
+   157→    if (!trimmed || sending || !agent) return
+   158→    const userMsg: AgentMsg = {
+   159→      id: `u-${Date.now()}`,
+   160→      role: 'user',
+   161→      content: trimmed,
+   162→      ts: now(),
+   163→    }
+   164→    const prior = histories[agent.id] ?? []
+   165→    const next = [...prior, userMsg]
+   166→    setHistories((h) => ({ ...h, [agent.id]: next }))
+   167→    setInput('')
+   168→    setSending(true)
+   169→    try {
+   170→      const history = next.map((m) => ({ role: m.role, content: m.content }))
+   171→      const res = await fetch('/api/ai', {
+   172→        method: 'POST',
+   173→        headers: { 'Content-Type': 'application/json' },
+   174→        body: JSON.stringify({
+   175→          mode: 'agent-chat',
+   176→          agentRole: `${agent.role} at ${PROPERTY.name}`,
+   177→          message: trimmed,
+   178→          history,
+   179→        }),
+   180→      })
+   181→      const data = await res.json()
+   182→      const reply =
+   183→        data?.reply ??
+   184→        'I am analyzing the latest data — please give me a moment and try again.'
+   185→      const aiMsg: AgentMsg = {
+   186→        id: `a-${Date.now()}`,
+   187→        role: 'assistant',
+   188→        content: reply,
+   189→        ts: now(),
+   190→      }
+   191→      setHistories((h) => ({ ...h, [agent.id]: [...(h[agent.id] ?? []), aiMsg] }))
+   192→    } catch {
+   193→      toast.error(`${agent.name} couldn't reply. Try again.`)
+   194→    } finally {
+   195→      setSending(false)
+   196→    }
+   197→  }
+   198→
+   199→  function reset() {
+   200→    if (!agent) return
+   201→    setHistories((h) => {
+   202→      const copy = { ...h }
+   203→      delete copy[agent.id]
+   204→      return copy
+   205→    })
+   206→    toast.success(`Cleared conversation with ${agent.name}`)
+   207→  }
+   208→
+   209→  return (
+   210→    <Dialog open={open} onOpenChange={onOpenChange}>
+   211→      <DialogContent className="flex max-h-[88vh] flex-col gap-0 p-0 sm:max-w-2xl">
+   212→        {agent && (
+   213→          <>
+   214→            <DialogHeader className="flex-row items-center gap-3 border-b border-border/60 px-4 py-3 text-left">
+   215→              <div
+   216→                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-2xl"
+   217→                style={{
+   218→                  backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
+   219→                  border: `1px solid ${agent.color}40`,
+   220→                }}
+   221→              >
+   222→                <span>{agent.avatar}</span>
+   223→              </div>
+   224→              <div className="min-w-0 flex-1">
+   225→                <DialogTitle className="flex items-center gap-2 text-base">
+   226→                  {agent.name}
+   227→                  <StatusPill status={agent.status} />
+   228→                </DialogTitle>
+   229→                <DialogDescription className="text-xs">
+   230→                  {agent.role} · {PROPERTY.name}
+   231→                </DialogDescription>
+   232→              </div>
+   233→              <TooltipProvider>
+   234→                <Tooltip>
+   235→                  <TooltipTrigger asChild>
+   236→                    <Button
+   237→                      size="icon"
+   238→                      variant="ghost"
+   239→                      className="h-8 w-8"
+   240→                      onClick={reset}
+   241→                    >
+   242→                      <RefreshCw className="h-3.5 w-3.5" />
+   243→                    </Button>
+   244→                  </TooltipTrigger>
+   245→                  <TooltipContent>Reset conversation</TooltipContent>
+   246→                </Tooltip>
+   247→              </TooltipProvider>
+   248→            </DialogHeader>
+   249→
+   250→            <p className="border-b border-border/40 bg-muted/30 px-4 py-2 text-xs italic text-muted-foreground">
+   251→              {agent.description}
+   252→            </p>
+   253→
+   254→            {/* messages */}
+   255→            <div
+   256→              ref={scrollRef}
+   257→              className="scroll-area-fancy flex-1 space-y-3 overflow-y-auto px-4 py-4"
+   258→              style={{ minHeight: '260px', maxHeight: '46vh' }}
+   259→            >
+   260→              {messages.length === 0 && (
+   261→                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+   262→                  <div
+   263→                    className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl"
+   264→                    style={{
+   265→                      backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
+   266→                      border: `1px solid ${agent.color}40`,
+   267→                    }}
+   268→                  >
+   269→                    {agent.avatar}
+   270→                  </div>
+   271→                  <p className="text-sm font-semibold">
+   272→                    Chat with {agent.name}
+   273→                  </p>
+   274→                  <p className="max-w-xs text-xs text-muted-foreground">
+   275→                    Ask about {agent.role.toLowerCase()} work — pricing,
+   276→                    campaigns, retention, or any data point.
+   277→                  </p>
+   278→                  <div className="mt-2 flex flex-wrap justify-center gap-2">
+   279→                    {SUGGESTED_QUESTIONS[agent.role]?.map((q) => (
+   280→                      <button
+   281→                        key={q}
+   282→                        onClick={() => send(q)}
+   283→                        disabled={sending}
+   284→                        className="rounded-full border border-border/60 bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-50"
+   285→                      >
+   286→                        {q}
+   287→                      </button>
+   288→                    ))}
+   289→                  </div>
+   290→                </div>
+   291→              )}
+   292→              <AnimatePresence initial={false}>
+   293→                {messages.map((m) => (
+   294→                  <motion.div
+   295→                    key={m.id}
+   296→                    initial={{ opacity: 0, y: 6 }}
+   297→                    animate={{ opacity: 1, y: 0 }}
+   298→                    className={cn(
+   299→                      'flex w-full',
+   300→                      m.role === 'user' ? 'justify-end' : 'justify-start',
+   301→                    )}
+   302→                  >
+   303→                    <div
+   304→                      className={cn(
+   305→                        'max-w-[82%] rounded-2xl px-3 py-2 text-sm',
+   306→                        m.role === 'user'
+   307→                          ? 'rounded-tr-sm bg-primary text-primary-foreground'
+   308→                          : 'rounded-tl-sm bg-muted text-foreground',
+   309→                      )}
+   310→                    >
+   311→                      {m.role === 'assistant' && (
+   312→                        <div className="mb-1 flex items-center gap-1.5">
+   313→                          <span
+   314→                            className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+   315→                            style={{
+   316→                              backgroundColor: `${agent.color}22`,
+   317→                              color: agent.color,
+   318→                            }}
+   319→                          >
+   320→                            <Sparkles className="h-2.5 w-2.5" /> {agent.name}
+   321→                          </span>
+   322→                        </div>
+   323→                      )}
+   324→                      <p className="whitespace-pre-wrap break-words leading-relaxed">
+   325→                        {m.content}
+   326→                      </p>
+   327→                      <p
+   328→                        className={cn(
+   329→                          'mt-1 text-right text-[10px]',
+   330→                          m.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground',
+   331→                        )}
+   332→                      >
+   333→                        {m.ts}
+   334→                      </p>
+   335→                    </div>
+   336→                  </motion.div>
+   337→                ))}
+   338→              </AnimatePresence>
+   339→              {sending && (
+   340→                <motion.div
+   341→                  initial={{ opacity: 0, y: 6 }}
+   342→                  animate={{ opacity: 1, y: 0 }}
+   343→                  className="flex justify-start"
+   344→                >
+   345→                  <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-muted px-3 py-2.5">
+   346→                    <span
+   347→                      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+   348→                      style={{
+   349→                        backgroundColor: `${agent.color}22`,
+   350→                        color: agent.color,
+   351→                      }}
+   352→                    >
+   353→                      <Sparkles className="h-2.5 w-2.5" /> {agent.name}
+   354→                    </span>
+   355→                    <div className="flex items-center gap-1">
+   356→                      {[0, 1, 2].map((i) => (
+   357→                        <motion.span
+   358→                          key={i}
+   359→                          className="h-1.5 w-1.5 rounded-full bg-muted-foreground"
+   360→                          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+   361→                          transition={{ duration: 1, repeat: Infinity, delay: i * 0.18 }}
+   362→                        />
+   363→                      ))}
+   364→                    </div>
+   365→                  </div>
+   366→                </motion.div>
+   367→              )}
+   368→            </div>
+   369→
+   370→            {/* input */}
+   371→            <div className="flex items-center gap-2 border-t border-border/60 px-3 py-3">
+   372→              <Input
+   373→                value={input}
+   374→                onChange={(e) => setInput(e.target.value)}
+   375→                onKeyDown={(e) => {
+   376→                  if (e.key === 'Enter' && !e.shiftKey) {
+   377→                    e.preventDefault()
+   378→                    send(input)
+   379→                  }
+   380→                }}
+   381→                placeholder={`Ask ${agent.name} anything…`}
+   382→                disabled={sending}
+   383→                className="h-10 flex-1"
+   384→              />
+   385→              <Button
+   386→                onClick={() => send(input)}
+   387→                disabled={sending || !input.trim()}
+   388→                size="icon"
+   389→                className="h-10 w-10 shrink-0"
+   390→                style={{ backgroundColor: agent.color, color: '#fff' }}
+   391→              >
+   392→                {sending ? (
+   393→                  <motion.span
+   394→                    animate={{ rotate: 360 }}
+   395→                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+   396→                  >
+   397→                    <Sparkles className="h-4 w-4" />
+   398→                  </motion.span>
+   399→                ) : (
+   400→                  <Send className="h-4 w-4" />
+   401→                )}
+   402→              </Button>
+   403→            </div>
+   404→          </>
+   405→        )}
+   406→      </DialogContent>
+   407→    </Dialog>
+   408→  )
+   409→}
+   410→
+   411→// suggested opening questions per role
+   412→const SUGGESTED_QUESTIONS: Record<string, string[]> = {
+   413→  'Revenue Manager': [
+   414→    'What rates should I set this weekend?',
+   415→    'Where are we leaving margin on the table?',
+   416→  ],
+   417→  'Marketing Manager': [
+   418→    'Draft a campaign for empty Friday rooms',
+   419→    'Which segment should I target next?',
+   420→  ],
+   421→  'Guest Success Manager': [
+   422→    'Which OTA guests should I convert?',
+   423→    'Who are my most at-risk VIPs?',
+   424→  ],
+   425→  'Pricing Analyst': [
+   426→    'How do my rates compare to competitors?',
+   427→    'What nights are underpriced?',
+   428→  ],
+   429→  'OTA Manager': [
+   430→    'Any calendar conflicts today?',
+   431→    'How is inventory syncing?',
+   432→  ],
+   433→  'Reputation Manager': [
+   434→    'Which reviews need responses?',
+   435→    'What is our sentiment trend?',
+   436→  ],
+   437→  'Sales Manager': [
+   438→    'Which corporate contracts are renewing?',
+   439→    'Best group-rate opportunity?',
+   440→  ],
+   441→  'Operations Manager': [
+   442→    'Any bottlenecks in housekeeping?',
+   443→    'Which rooms block check-ins?',
+   444→  ],
+   445→  'Finance Analyst': [
+   446→    'Summarize this month\'s cash flow',
+   447→    'Where are commissions leaking?',
+   448→  ],
+   449→  'General Manager': [
+   450→    'Give me the morning brief',
+   451→    'What needs my attention today?',
+   452→  ],
+   453→}
+   454→
+   455→// ---------- activity feed ----------
+   456→interface ActivityItem {
+   457→  id: string
+   458→  agent: AIAgent
+   459→  action: string
+   460→  ts: string
+   461→  kind: 'action' | 'recommendation'
+   462→  detail?: string
+   463→}
+   464→
+   465→function buildActivity(): ActivityItem[] {
+   466→  const items: ActivityItem[] = []
+   467→  // from agents' lastAction
+   468→  AI_AGENTS.forEach((a, i) => {
+   469→    items.push({
+   470→      id: `act-${a.id}`,
+   471→      agent: a,
+   472→      action: a.lastAction,
+   473→      ts: `${i * 7 + 3} min ago`,
+   474→      kind: 'action' as const,
+   475→    })
+   476→  })
+   477→  // from recommendations
+   478→  AI_RECOMMENDATIONS.slice(0, 3).forEach((r, i) => {
+   479→    const agent = AI_AGENTS.find((a) => a.id === r.agentId) ?? AI_AGENTS[0]
+   480→    items.push({
+   481→      id: `rec-${r.id}`,
+   482→      agent,
+   483→      action: `Flagged: ${r.title}`,
+   484→      ts: `${i * 12 + 18} min ago`,
+   485→      kind: 'recommendation' as const,
+   486→      detail: r.action,
+   487→    })
+   488→  })
+   489→  // sort by a fake "minutes ago" ascending extracted from ts
+   490→  return items.sort((a, b) => {
+   491→    const am = parseInt(a.ts) || 0
+   492→    const bm = parseInt(b.ts) || 0
+   493→    return am - bm
+   494→  })
+   495→}
+   496→
+   497→function ActivityFeed() {
+   498→  const items = React.useMemo(() => buildActivity(), [])
+   499→  return (
+   500→    <Card className="flex h-full flex-col p-4">
+   501→      <div className="flex items-center justify-between">
+   502→        <div className="flex items-center gap-2">
+   503→          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/15 text-orange-600 dark:text-orange-400">
+   504→            <Activity className="h-4 w-4" />
+   505→          </div>
+   506→          <div>
+   507→            <h3 className="text-sm font-semibold">Agent Activity</h3>
+   508→            <p className="text-[11px] text-muted-foreground">Live actions across the team</p>
+   509→          </div>
+   510→        </div>
+   511→        <Badge variant="secondary" className="gap-1 text-[10px]">
+   512→          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+   513→          live
+   514→        </Badge>
+   515→      </div>
+   516→      <Separator className="my-3" />
+   517→      <ScrollArea className="scroll-area-fancy -mx-1 flex-1 pr-1" style={{ maxHeight: '420px' }}>
+   518→        <ol className="relative ml-2 space-y-1 border-l border-border/60 pl-4">
+   519→          {items.map((item, idx) => (
+   520→            <motion.li
+   521→              key={item.id}
+   522→              initial={{ opacity: 0, x: -6 }}
+   523→              animate={{ opacity: 1, x: 0 }}
+   524→              transition={{ delay: idx * 0.04 }}
+   525→              className="relative pb-3"
+   526→            >
+   527→              <span
+   528→                className="absolute -left-[1.40rem] top-1 flex h-3 w-3 items-center justify-center rounded-full ring-2 ring-card"
+   529→                style={{ backgroundColor: item.agent.color }}
+   530→              />
+   531→              <div className="flex items-start gap-2">
+   532→                <div className="min-w-0 flex-1">
+   533→                  <div className="flex flex-wrap items-center gap-1.5">
+   534→                    <span className="text-sm">{item.agent.avatar}</span>
+   535→                    <span className="text-xs font-semibold">{item.agent.name}</span>
+   536→                    <span className="text-[10px] text-muted-foreground">
+   537→                      · {item.agent.role}
+   538→                    </span>
+   539→                  </div>
+   540→                  <p className="mt-0.5 text-xs text-foreground/90">{item.action}</p>
+   541→                  {item.detail && (
+   542→                    <p className="mt-0.5 text-[11px] italic text-muted-foreground">
+   543→                      → {item.detail}
+   544→                    </p>
+   545→                  )}
+   546→                  <p className="mt-0.5 text-[10px] text-muted-foreground">{item.ts}</p>
+   547→                </div>
+   548→                {item.kind === 'recommendation' && (
+   549→                  <Badge
+   550→                    variant="outline"
+   551→                    className="shrink-0 gap-1 border-amber-500/40 text-[10px] text-amber-600 dark:text-amber-400"
+   552→                  >
+   553→                    <Zap className="h-2.5 w-2.5" />
+   554→                    rec
+   555→                  </Badge>
+   556→                )}
+   557→              </div>
+   558→            </motion.li>
+   559→          ))}
+   560→        </ol>
+   561→      </ScrollArea>
+   562→    </Card>
+   563→  )
+   564→}
+   565→
+   566→// ---------- morning brief ----------
+   567→function MorningBrief() {
+   568→  const [brief, setBrief] = React.useState<string | null>(null)
+   569→  const [loading, setLoading] = React.useState(false)
+   570→
+   571→  async function generate() {
+   572→    setLoading(true)
+   573→    setBrief(null)
+   574→    try {
+   575→      const res = await fetch('/api/ai', {
+   576→        method: 'POST',
+   577→        headers: { 'Content-Type': 'application/json' },
+   578→        body: JSON.stringify({ mode: 'brief' }),
+   579→      })
+   580→      const data = await res.json()
+   581→      setBrief(data?.reply ?? 'No brief available.')
+   582→    } catch {
+   583→      toast.error('Failed to generate brief. Try again.')
+   584→    } finally {
+   585→      setLoading(false)
+   586→    }
+   587→  }
+   588→
+   589→  return (
+   590→    <Card className="relative overflow-hidden p-5">
+   591→      <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/10 blur-2xl" />
+   592→      <div className="relative flex items-start justify-between gap-3">
+   593→        <div className="flex items-start gap-3">
+   594→          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-600 dark:text-amber-400">
+   595→            <Crown className="h-5 w-5" />
+   596→          </div>
+   597→          <div>
+   598→            <h3 className="text-sm font-semibold">Morning Brief</h3>
+   599→            <p className="text-[11px] text-muted-foreground">
+   600→              Nana, your General Manager AI, synthesizes the day ahead.
+   601→            </p>
+   602→          </div>
+   603→        </div>
+   604→        <Button
+   605→          size="sm"
+   606→          onClick={generate}
+   607→          disabled={loading}
+   608→          className="shrink-0 gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600"
+   609→        >
+   610→          {loading ? (
+   611→            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+   612→          ) : (
+   613→            <Sparkles className="h-3.5 w-3.5" />
+   614→          )}
+   615→          {loading ? 'Generating…' : brief ? 'Regenerate' : 'Generate today\'s brief'}
+   616→        </Button>
+   617→      </div>
+   618→
+   619→      <Separator className="my-4" />
+   620→
+   621→      {loading && (
+   622→        <div className="space-y-2">
+   623→          {[...Array(6)].map((_, i) => (
+   624→            <div
+   625→              key={i}
+   626→              className="shimmer h-3 rounded-full"
+   627→              style={{ width: `${[100, 92, 96, 88, 70, 84][i]}%` }}
+   628→            />
+   629→          ))}
+   630→        </div>
+   631→      )}
+   632→
+   633→      {!loading && !brief && (
+   634→        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+   635→          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+   636→            <Crown className="h-5 w-5 text-muted-foreground" />
+   637→          </div>
+   638→          <p className="text-sm font-medium">No brief yet today</p>
+   639→          <p className="max-w-xs text-xs text-muted-foreground">
+   640→            Generate a 60-second snapshot of today's threats, opportunities, and top 3 recommendations.
+   641→          </p>
+   642→        </div>
+   643→      )}
+   644→
+   645→      {!loading && brief && (
+   646→        <motion.div
+   647→          initial={{ opacity: 0, y: 8 }}
+   648→          animate={{ opacity: 1, y: 0 }}
+   649→          className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed text-foreground/90 [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:text-foreground"
+   650→        >
+   651→          <ReactMarkdown
+   652→            components={{
+   653→              h1: ({ children }) => (
+   654→                <p className="mt-2 mb-1 text-sm font-bold text-foreground">{children}</p>
+   655→              ),
+   656→              h2: ({ children }) => (
+   657→                <p className="mt-2 mb-1 text-sm font-bold text-foreground">{children}</p>
+   658→              ),
+   659→              h3: ({ children }) => (
+   660→                <p className="mt-1.5 mb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+   661→                  {children}
+   662→                </p>
+   663→              ),
+   664→              ul: ({ children }) => <ul className="ml-4 list-disc space-y-0.5">{children}</ul>,
+   665→              ol: ({ children }) => <ol className="ml-4 list-decimal space-y-0.5">{children}</ol>,
+   666→            }}
+   667→          >
+   668→            {brief}
+   669→          </ReactMarkdown>
+   670→        </motion.div>
+   671→      )}
+   672→    </Card>
+   673→  )
+   674→}
+   675→
+   676→// ---------- main ----------
+   677→export function AgentsModule() {
+   678→  const [chatAgent, setChatAgent] = React.useState<AIAgent | null>(null)
+   679→  const [chatOpen, setChatOpen] = React.useState(false)
+   680→
+   681→  const totalTasks = AI_AGENTS.reduce((s, a) => s + a.tasksCompleted, 0)
+   682→  const activeNow = AI_AGENTS.filter(
+   683→    (a) => a.status === 'Active' || a.status === 'Working',
+   684→  ).length
+   685→  const openRecs = AI_RECOMMENDATIONS.length
+   686→
+   687→  function openChat(a: AIAgent) {
+   688→    setChatAgent(a)
+   689→    setChatOpen(true)
+   690→  }
+   691→
+   692→  return (
+   693→    <div className="space-y-6">
+   694→      {/* header */}
+   695→      <SectionHeader
+   696→        title="AI Agents"
+   697→        description="Instead of one chatbot, StayPilot AI runs a team of specialized agents that collaborate 24/7."
+   698→        action={
+   699→          <Badge
+   700→            variant="secondary"
+   701→            className="hidden items-center gap-1.5 px-3 py-1.5 text-xs sm:inline-flex"
+   702→          >
+   703→            <Cpu className="h-3.5 w-3.5 text-orange-500" />
+   704→            {AI_AGENTS.length} agents online
+   705→          </Badge>
+   706→        }
+   707→      />
+   708→
+   709→      {/* explainer strip */}
+   710→      <Card className="overflow-hidden border-none p-0">
+   711→        <div className="relative bg-gradient-to-r from-rose-500/15 via-orange-500/15 to-amber-500/15 p-4 sm:p-5">
+   712→          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   713→            <div className="flex items-start gap-3">
+   714→              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow">
+   715→                <Brain className="h-5 w-5" />
+   716→              </div>
+   717→              <div>
+   718→                <p className="text-sm font-semibold">
+   719→                  Your autonomous revenue team is working right now.
+   720→                </p>
+   721→                <p className="mt-0.5 text-xs text-muted-foreground">
+   722→                  Each agent owns a domain — pricing, marketing, retention, reputation, ops —
+   723→                  and reports into one shared brief for you every morning.
+   724→                </p>
+   725→              </div>
+   726→            </div>
+   727→            <div className="flex shrink-0 items-center gap-3 text-xs">
+   728→              <div className="flex items-center gap-1.5">
+   729→                <StatusDot status="Active" />
+   730→                <span className="text-muted-foreground">Active</span>
+   731→              </div>
+   732→              <div className="flex items-center gap-1.5">
+   733→                <StatusDot status="Working" />
+   734→                <span className="text-muted-foreground">Working</span>
+   735→              </div>
+   736→              <div className="flex items-center gap-1.5">
+   737→                <StatusDot status="Idle" />
+   738→                <span className="text-muted-foreground">Idle</span>
+   739→              </div>
+   740→            </div>
+   741→          </div>
+   742→        </div>
+   743→      </Card>
+   744→
+   745→      {/* stats */}
+   746→      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+   747→        <StatCard
+   748→          label="Total agents"
+   749→          value={String(AI_AGENTS.length)}
+   750→          sub="specialized roles"
+   751→          accent="brand"
+   752→          icon={<Bot className="h-5 w-5" />}
+   753→        />
+   754→        <StatCard
+   755→          label="Active now"
+   756→          value={String(activeNow)}
+   757→          sub={`${AI_AGENTS.length - activeNow} idle`}
+   758→          accent="teal"
+   759→          icon={<Activity className="h-5 w-5" />}
+   760→          trend={8}
+   761→        />
+   762→        <StatCard
+   763→          label="Tasks completed"
+   764→          value={totalTasks.toLocaleString()}
+   765→          sub="all-time · across team"
+   766→          accent="gold"
+   767→          icon={<CheckCircle2 className="h-5 w-5" />}
+   768→          trend={14}
+   769→        />
+   770→        <StatCard
+   771→          label="Recommendations open"
+   772→          value={String(openRecs)}
+   773→          sub="awaiting your decision"
+   774→          accent="rose"
+   775→          icon={<AlertCircle className="h-5 w-5" />}
+   776→        />
+   777→      </div>
+   778→
+   779→      {/* main grid */}
+   780→      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_360px]">
+   781→        {/* agent grid */}
+   782→        <div className="space-y-3">
+   783→          <div className="flex items-center justify-between">
+   784→            <h3 className="text-sm font-semibold text-muted-foreground">
+   785→              Agent team
+   786→            </h3>
+   787→            <span className="text-[11px] text-muted-foreground">
+   788→              Click any agent to chat
+   789→            </span>
+   790→          </div>
+   791→          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+   792→            {AI_AGENTS.map((agent) => (
+   793→              <AgentCard key={agent.id} agent={agent} onChat={openChat} />
+   794→            ))}
+   795→          </div>
+   796→        </div>
+   797→
+   798→        {/* right column: activity feed + morning brief */}
+   799→        <div className="space-y-5">
+   800→          <MorningBrief />
+   801→          <ActivityFeed />
+   802→        </div>
+   803→      </div>
+   804→
+   805→      {/* agent chat dialog */}
+   806→      <AgentChatDialog
+   807→        agent={chatAgent}
+   808→        open={chatOpen}
+   809→        onOpenChange={setChatOpen}
+   810→      />
+   811→    </div>
+   812→  )
+   813→}
+   814→
+   815→
+   816→

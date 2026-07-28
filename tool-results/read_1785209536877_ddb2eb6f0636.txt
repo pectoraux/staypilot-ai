@@ -1,0 +1,743 @@
+     1→// StayPilot AI V2 — Autonomous Revenue Operating System data layer.
+     2→// Reuses V1 data (RESERVATIONS, GUESTS, etc.) and adds autonomous concepts:
+     3→// Missions, Opportunities, AI Memory, Booking Funnel, Intelligent Segmentation,
+     4→// Predictive Revenue, AI Experiments, Direct Booking Intel, Knowledge Graph,
+     5→// Multi-Property, Marketplace, Workforce Cascade, CEO Daily Brief actions.
+     6→import { GUESTS, RESERVATIONS, ROOMS, PROPERTY, AI_AGENTS, REVIEWS, EXPERIENCES, CORPORATE, CHANNELS } from './data'
+     7→import type { BookingSource } from './types'
+     8→
+     9→const today = new Date()
+    10→const iso = (d: Date) => d.toISOString().slice(0, 10)
+    11→const daysFromNow = (n: number) => { const d = new Date(today); d.setDate(d.getDate() + n); return iso(d) }
+    12→
+    13→// ===================== MISSIONS =====================
+    14→export type MissionStatus = 'Active' | 'On Track' | 'At Risk' | 'Completed' | 'Paused' | 'Awaiting Approval'
+    15→export type MissionType = 'occupancy' | 'conversion' | 'retention' | 'pricing' | 'reputation' | 'direct'
+    16→
+    17→export interface MissionAction {
+    18→  id: string
+    19→  agent: string
+    20→  agentRole: string
+    21→  description: string
+    22→  status: 'done' | 'in-progress' | 'pending' | 'approved' | 'auto'
+    23→  timestamp: string
+    24→  auto?: boolean
+    25→}
+    26→
+    27→export interface Mission {
+    28→  id: string
+    29→  name: string
+    30→  type: MissionType
+    31→  status: MissionStatus
+    32→  progress: number
+    33→  currentMetric: string
+    34→  targetMetric: string
+    35→  currentValue: number
+    36→  targetValue: number
+    37→  unit: string
+    38→  expectedRevenue: number
+    39→  expectedSavings?: number
+    40→  estimatedCompletion: string
+    41→  deadline: string
+    42→  leadAgent: string
+    43→  agentChain: { role: string; agent: string; status: 'done' | 'active' | 'pending'; action: string }[]
+    44→  actions: MissionAction[]
+    45→  autoExecuting: boolean
+    46→  northStar: string
+    47→}
+    48→
+    49→export const MISSIONS: Mission[] = [
+    50→  {
+    51→    id: 'mis-1',
+    52→    name: 'Fill Empty Weekend',
+    53→    type: 'occupancy',
+    54→    status: 'Active',
+    55→    progress: 40,
+    56→    currentMetric: 'Friday occupancy',
+    57→    targetMetric: 'Friday occupancy',
+    58→    currentValue: 42,
+    59→    targetValue: 85,
+    60→    unit: '%',
+    61→    expectedRevenue: 12500,
+    62→    estimatedCompletion: 'Fri 6:00 PM',
+    63→    deadline: daysFromNow(3),
+    64→    leadAgent: 'agent-1',
+    65→    autoExecuting: true,
+    66→    northStar: 'Occupancy',
+    67→    agentChain: [
+    68→      { role: 'Revenue Director', agent: 'Kofi', status: 'done', action: 'Detected 11 empty rooms Friday' },
+    69→      { role: 'Pricing Analyst', agent: 'Abena', status: 'done', action: 'Recommended 7% price cut on OTAs' },
+    70→      { role: 'Marketing Director', agent: 'Ama', status: 'active', action: 'Launched WhatsApp flash sale to 48 guests' },
+    71→      { role: 'CRM Manager', agent: 'Yaw', status: 'pending', action: 'Contacting lapsed VIP guests' },
+    72→      { role: 'Guest Relations', agent: 'Akosua', status: 'pending', action: 'Preparing free-breakfast perk' },
+    73→      { role: 'Revenue Director', agent: 'Kofi', status: 'pending', action: 'Will report impact Sat 9 AM' },
+    74→    ],
+    75→    actions: [
+    76→      { id: 'a1', agent: 'Abena', agentRole: 'Pricing Analyst', description: 'Reduced Booking.com & Airbnb rates by 7% for Fri-Sun', status: 'auto', timestamp: '2h ago', auto: true },
+    77→      { id: 'a2', agent: 'Ama', agentRole: 'Marketing Director', description: 'Sent WhatsApp flash sale to 48 lapsed guests (20% off)', status: 'done', timestamp: '1h ago' },
+    78→      { id: 'a3', agent: 'Ama', agentRole: 'Marketing Director', description: 'Published Google Business weekend promotion', status: 'done', timestamp: '50m ago' },
+    79→      { id: 'a4', agent: 'Ama', agentRole: 'Marketing Director', description: 'Scheduled Instagram story for 5 PM', status: 'in-progress', timestamp: '15m ago' },
+    80→      { id: 'a5', agent: 'Yaw', agentRole: 'CRM Manager', description: 'Contacting 12 lapsed VIP guests personally', status: 'in-progress', timestamp: 'now' },
+    81→      { id: 'a6', agent: 'Akosua', agentRole: 'Guest Relations', description: 'Awaiting approval: add free breakfast perk', status: 'pending', timestamp: '—' },
+    82→    ],
+    83→  },
+    84→  {
+    85→    id: 'mis-2',
+    86→    name: 'Convert OTA Guests to Direct',
+    87→    type: 'conversion',
+    88→    status: 'On Track',
+    89→    progress: 42,
+    90→    currentMetric: 'Airbnb/Booking guests contacted',
+    91→    targetMetric: 'Moved to direct bookings',
+    92→    currentValue: 18,
+    93→    targetValue: 50,
+    94→    unit: 'guests',
+    95→    expectedSavings: 8700,
+    96→    expectedRevenue: 31200,
+    97→    estimatedCompletion: '14 days',
+    98→    deadline: daysFromNow(14),
+    99→    leadAgent: 'agent-3',
+   100→    autoExecuting: true,
+   101→    northStar: 'Direct Booking %',
+   102→    agentChain: [
+   103→      { role: 'CRM Manager', agent: 'Yaw', status: 'done', action: 'Identified 42 OTA guests eligible for conversion' },
+   104→      { role: 'Guest Relations', agent: 'Akosua', status: 'active', action: 'Sending loyalty invites + welcome-back coupons' },
+   105→      { role: 'CRM Manager', agent: 'Yaw', status: 'pending', action: 'Tracking coupon redemptions' },
+   106→      { role: 'Finance Manager', agent: 'Efua', status: 'pending', action: 'Calculating commission saved' },
+   107→    ],
+   108→    actions: [
+   109→      { id: 'a1', agent: 'Yaw', agentRole: 'CRM Manager', description: 'Identified 42 OTA guests matching conversion profile', status: 'auto', timestamp: '3h ago', auto: true },
+   110→      { id: 'a2', agent: 'Akosua', agentRole: 'Guest Relations', description: 'Sent loyalty invites to 18 guests with DIRECT15 coupon', status: 'done', timestamp: '2h ago' },
+   111→      { id: 'a3', agent: 'Akosua', agentRole: 'Guest Relations', description: '6 coupons redeemed so far', status: 'in-progress', timestamp: '20m ago' },
+   112→      { id: 'a4', agent: 'Efua', agentRole: 'Finance Manager', description: 'Tracking ₵8,700 projected commission savings', status: 'in-progress', timestamp: '10m ago' },
+   113→    ],
+   114→  },
+   115→  {
+   116→    id: 'mis-3',
+   117→    name: 'Increase Repeat Guests Q4',
+   118→    type: 'retention',
+   119→    status: 'Active',
+   120→    progress: 28,
+   121→    currentMetric: 'Repeat guest rate',
+   122→    targetMetric: 'Repeat guest rate',
+   123→    currentValue: 38,
+   124→    targetValue: 50,
+   125→    unit: '%',
+   126→    expectedRevenue: 24500,
+   127→    estimatedCompletion: '90 days',
+   128→    deadline: daysFromNow(90),
+   129→    leadAgent: 'agent-3',
+   130→    autoExecuting: true,
+   131→    northStar: 'Repeat Guest %',
+   132→    agentChain: [
+   133→      { role: 'CRM Manager', agent: 'Yaw', status: 'done', action: 'Segmented 64 guests by repeat potential' },
+   134→      { role: 'Marketing Director', agent: 'Ama', status: 'active', action: 'Running "Loyalty Reboot" to 18 VIP/Gold lapsed' },
+   135→      { role: 'Guest Relations', agent: 'Akosua', status: 'pending', action: 'Birthday & anniversary rewards queue' },
+   136→    ],
+   137→    actions: [
+   138→      { id: 'a1', agent: 'Yaw', agentRole: 'CRM Manager', description: 'Segmented guests: 18 high-repeat-potential, 12 lapsed VIP', status: 'auto', timestamp: '5h ago', auto: true },
+   139→      { id: 'a2', agent: 'Ama', agentRole: 'Marketing Director', description: 'Scheduled Loyalty Reboot WhatsApp campaign (25% off)', status: 'in-progress', timestamp: '1h ago' },
+   140→      { id: 'a3', agent: 'Akosua', agentRole: 'Guest Relations', description: 'Queued 4 birthday rewards + 2 anniversary offers', status: 'pending', timestamp: '—' },
+   141→    ],
+   142→  },
+   143→  {
+   144→    id: 'mis-4',
+   145→    name: 'Recover Dropped Rating',
+   146→    type: 'reputation',
+   147→    status: 'At Risk',
+   148→    progress: 15,
+   149→    currentMetric: 'Google rating',
+   150→    targetMetric: 'Google rating',
+   151→    currentValue: 4.2,
+   152→    targetValue: 4.5,
+   153→    unit: '★',
+   154→    expectedRevenue: 18000,
+   155→    estimatedCompletion: '45 days',
+   156→    deadline: daysFromNow(45),
+   157→    leadAgent: 'agent-6',
+   158→    autoExecuting: false,
+   159→    northStar: 'Customer Satisfaction',
+   160→    agentChain: [
+   161→      { role: 'Reputation Manager', agent: 'Akosua', status: 'active', action: 'Drafting replies to 3 unanswered reviews' },
+   162→      { role: 'Operations Manager', agent: 'Adwoa', status: 'pending', action: 'Fixing AC noise (room 102) root cause' },
+   163→      { role: 'Guest Relations', agent: 'Akosua', status: 'pending', action: 'Service recovery outreach' },
+   164→    ],
+   165→    actions: [
+   166→      { id: 'a1', agent: 'Akosua', agentRole: 'Reputation Manager', description: 'Drafted AI replies for 3 pending reviews', status: 'in-progress', timestamp: '30m ago' },
+   167→      { id: 'a2', agent: 'Adwoa', agentRole: 'Operations Manager', description: 'Awaiting approval: expedite room 102 AC repair', status: 'pending', timestamp: '—' },
+   168→    ],
+   169→  },
+   170→  {
+   171→    id: 'mis-5',
+   172→    name: 'Optimize Penthouse Pricing',
+   173→    type: 'pricing',
+   174→    status: 'Awaiting Approval',
+   175→    progress: 0,
+   176→    currentMetric: 'Penthouse nightly rate',
+   177→    targetMetric: 'Penthouse nightly rate',
+   178→    currentValue: 2200,
+   179→    targetValue: 2600,
+   180→    unit: '₵',
+   181→    expectedRevenue: 9600,
+   182→    estimatedCompletion: 'After approval',
+   183→    deadline: daysFromNow(2),
+   184→    leadAgent: 'agent-4',
+   185→    autoExecuting: false,
+   186→    northStar: 'RevPAR',
+   187→    agentChain: [
+   188→      { role: 'Pricing Analyst', agent: 'Abena', status: 'done', action: 'Found penthouse 48% below Kempinski entry suite' },
+   189→      { role: 'Revenue Director', agent: 'Kofi', status: 'active', action: 'Recommending ₵2,600 test rate next weekend' },
+   190→    ],
+   191→    actions: [
+   192→      { id: 'a1', agent: 'Abena', agentRole: 'Pricing Analyst', description: 'Competitor scan: penthouse 48% underpriced vs Kempinski', status: 'auto', timestamp: '1h ago', auto: true },
+   193→      { id: 'a2', agent: 'Kofi', agentRole: 'Revenue Director', description: 'Proposed ₵2,600 test rate — awaiting owner approval', status: 'pending', timestamp: '—' },
+   194→    ],
+   195→  },
+   196→]
+   197→
+   198→// ===================== OPPORTUNITY FEED =====================
+   199→export type OpportunityType = 'repeat-likelihood' | 'anniversary' | 'competitor' | 'abandonment' | 'lapsed-corporate' | 'weather' | 'event' | 'birthday' | 'upsell' | 'referral'
+   200→
+   201→export interface Opportunity {
+   202→  id: string
+   203→  type: OpportunityType
+   204→  title: string
+   205→  detail: string
+   206→  potentialRevenue: number
+   207→  confidence: number
+   208→  deadline: string
+   209→  action: string
+   210→  executed: boolean
+   211→  autoExecutable: boolean
+   212→  agentId: string
+   213→  icon: string
+   214→}
+   215→
+   216→export const OPPORTUNITIES: Opportunity[] = [
+   217→  { id: 'opp-1', type: 'repeat-likelihood', title: '12 previous guests likely to book next weekend', detail: 'AI matched booking patterns: 12 guests historically book ~7 days before similar weekends. Average spend ₵1,850.', potentialRevenue: 22200, confidence: 87, deadline: daysFromNow(2), action: 'Send targeted WhatsApp offer', executed: false, autoExecutable: true, agentId: 'agent-3', icon: '🔁' },
+   218→  { id: 'opp-2', type: 'anniversary', title: '3 families visited exactly one year ago', detail: 'The Boateng, Mensah, and Owusu families all stayed this week last year. Anniversary re-engagement historically converts at 41%.', potentialRevenue: 9300, confidence: 78, deadline: daysFromNow(5), action: 'Send anniversary return offer', executed: false, autoExecutable: true, agentId: 'agent-3', icon: '🎉' },
+   219→  { id: 'opp-3', type: 'competitor', title: 'Competitors increased prices by 15%', detail: 'Golden Tulip & Labadi Beach raised weekend rates 12-15% in the last 24h. Your rates are now 22% below market — margin left on the table.', potentialRevenue: 4800, confidence: 92, deadline: daysFromNow(1), action: 'Raise weekend rates 8%', executed: false, autoExecutable: true, agentId: 'agent-1', icon: '📈' },
+   220→  { id: 'opp-4', type: 'abandonment', title: '7 guests abandoned booking widget', detail: '7 visitors reached the payment step on your direct site but didn\'t complete. Average cart value ₵1,420.', potentialRevenue: 9940, confidence: 64, deadline: daysFromNow(1), action: 'Send recovery email + 10% coupon', executed: false, autoExecutable: true, agentId: 'agent-2', icon: '🛒' },
+   221→  { id: 'opp-5', type: 'lapsed-corporate', title: 'MTN Ghana hasn\'t booked in 6 weeks', detail: 'Your top corporate account (42 bookings, ₵48,300 lifetime) last booked 42 days ago — 3x their usual gap. Contract renewal due in 120 days.', potentialRevenue: 11500, confidence: 81, deadline: daysFromNow(7), action: 'Sales Manager outreach call', executed: false, autoExecutable: false, agentId: 'agent-7', icon: '💼' },
+   222→  { id: 'opp-6', type: 'weather', title: 'Rain forecast increases staycation demand', detail: 'AccuWeather predicts heavy rain Fri-Sun across Accra. Staycation demand historically rises 23% on rainy weekends — locals escape to lodges.', potentialRevenue: 7600, confidence: 71, deadline: daysFromNow(2), action: 'Target Accra-based guests with rainy-weekend promo', executed: false, autoExecutable: true, agentId: 'agent-2', icon: '🌧️' },
+   223→  { id: 'opp-7', type: 'event', title: 'Conference at AICC next Thursday', detail: 'A 2,000-attendee tech conference at Accra International Conference Center next Thu-Fri. 8 nearby hotels already sold out.', potentialRevenue: 14400, confidence: 88, deadline: daysFromNow(4), action: 'Boost OTA visibility + corporate outreach', executed: false, autoExecutable: true, agentId: 'agent-1', icon: '🎤' },
+   224→  { id: 'opp-8', type: 'birthday', title: '4 guests have birthdays this month', detail: 'Sarah, David, Priya, and Marcus all have birthdays in the next 18 days. Birthday offers convert at 38%.', potentialRevenue: 5200, confidence: 69, deadline: daysFromNow(18), action: 'Send birthday reward + free upgrade', executed: false, autoExecutable: true, agentId: 'agent-3', icon: '🎂' },
+   225→  { id: 'opp-9', type: 'upsell', title: '9 check-ins eligible for experience upsell', detail: '9 guests checking in this week match the profile for the Cape Coast Castle tour (₵450). Historic uptake 33%.', potentialRevenue: 1336, confidence: 74, deadline: daysFromNow(3), action: 'Offer tour at check-in', executed: false, autoExecutable: true, agentId: 'agent-8', icon: '🗺️' },
+   226→  { id: 'opp-10', type: 'referral', title: '3 VIP guests are high-referral-potential', detail: 'Based on review scores (4.8+) and social activity, Akosua, Kwame, and Aisha are likely to refer 2+ friends each if nudged.', potentialRevenue: 16800, confidence: 66, deadline: daysFromNow(30), action: 'Send referral incentive (free night per booking)', executed: false, autoExecutable: false, agentId: 'agent-3', icon: '🤝' },
+   227→]
+   228→
+   229→// ===================== AI MEMORY =====================
+   230→export interface GuestMemory {
+   231→  id: string
+   232→  guestId: string
+   233→  category: 'preference' | 'behavior' | 'occasion' | 'sensitivity' | 'relationship' | 'history'
+   234→  content: string
+   235→  auto: boolean
+   236→  lastUsed?: string
+   237→  timesUsed: number
+   238→}
+   239→
+   240→export const GUEST_MEMORIES: GuestMemory[] = [
+   241→  { id: 'mem-1', guestId: GUESTS[0].id, category: 'preference', content: 'Always requests Room 101 (ground floor, near reception)', auto: true, lastUsed: '3 days ago', timesUsed: 5 },
+   242→  { id: 'mem-2', guestId: GUESTS[0].id, category: 'sensitivity', content: 'Allergic to feathers — needs synthetic pillows', auto: true, lastUsed: '3 days ago', timesUsed: 5 },
+   243→  { id: 'mem-3', guestId: GUESTS[1].id, category: 'behavior', content: 'Always books for Easter weekend (3 years running)', auto: true, lastUsed: '90 days ago', timesUsed: 3 },
+   244→  { id: 'mem-4', guestId: GUESTS[2].id, category: 'relationship', content: 'Travels with spouse for anniversary every November', auto: true, lastUsed: '120 days ago', timesUsed: 2 },
+   245→  { id: 'mem-5', guestId: GUESTS[3].id, category: 'preference', content: 'Prefers late checkout (2 PM) — business meetings run late', auto: true, lastUsed: '12 days ago', timesUsed: 4 },
+   246→  { id: 'mem-6', guestId: GUESTS[4].id, category: 'history', content: 'CEO of MTN Ghana — corporate VIP, always gets airport pickup', auto: false, lastUsed: '42 days ago', timesUsed: 8 },
+   247→  { id: 'mem-7', guestId: GUESTS[5].id, category: 'occasion', content: 'Birthday is March 14 — has celebrated at the lodge twice', auto: true, lastUsed: '200 days ago', timesUsed: 2 },
+   248→  { id: 'mem-8', guestId: GUESTS[6].id, category: 'behavior', content: 'Books spa package 80% of stays — high upsell potential', auto: true, lastUsed: '8 days ago', timesUsed: 6 },
+   249→  { id: 'mem-9', guestId: GUESTS[7].id, category: 'sensitivity', content: 'Vegetarian + gluten-free — kitchen pre-notified every stay', auto: true, lastUsed: '20 days ago', timesUsed: 4 },
+   250→  { id: 'mem-10', guestId: GUESTS[8].id, category: 'relationship', content: 'Refers 2-3 friends/year — top referrer, deserves VIP treatment', auto: true, lastUsed: '60 days ago', timesUsed: 9 },
+   251→]
+   252→
+   253→export function memoriesForGuest(guestId: string): GuestMemory[] {
+   254→  return GUEST_MEMORIES.filter(m => m.guestId === guestId)
+   255→}
+   256→
+   257→// ===================== BOOKING FUNNEL =====================
+   258→export interface FunnelStage {
+   259→  id: string
+   260→  name: string
+   261→  count: number
+   262→  conversionRate: number
+   263→  dropOff: number
+   264→  value: number
+   265→  icon: string
+   266→}
+   267→
+   268→export const FUNNEL_STAGES: FunnelStage[] = [
+   269→  { id: 'f1', name: 'Website Visitors', count: 4820, conversionRate: 100, dropOff: 0, value: 0, icon: '👁️' },
+   270→  { id: 'f2', name: 'Booking Widget Opened', count: 1240, conversionRate: 25.7, dropOff: 74.3, value: 0, icon: '🧭' },
+   271→  { id: 'f3', name: 'Inquiry / Date Search', count: 680, conversionRate: 14.1, dropOff: 45.2, value: 0, icon: '🔍' },
+   272→  { id: 'f4', name: 'WhatsApp Contact', count: 320, conversionRate: 6.6, dropOff: 52.9, value: 0, icon: '💬' },
+   273→  { id: 'f5', name: 'Reservation', count: 142, conversionRate: 2.9, dropOff: 55.6, value: 168400, icon: '✅' },
+   274→  { id: 'f6', name: 'Check-in', count: 128, conversionRate: 2.7, dropOff: 9.9, value: 168400, icon: '🔑' },
+   275→  { id: 'f7', name: 'Repeat Stay', count: 48, conversionRate: 1.0, dropOff: 62.5, value: 89200, icon: '🔁' },
+   276→  { id: 'f8', name: 'Referral', count: 18, conversionRate: 0.37, dropOff: 62.5, value: 32400, icon: '🤝' },
+   277→]
+   278→
+   279→// ===================== INTELLIGENT SEGMENTATION =====================
+   280→export interface Segment {
+   281→  id: string
+   282→  name: string
+   283→  icon: string
+   284→  count: number
+   285→  lifetimeValue: number
+   286→  retentionRate: number
+   287→  preferredChannels: string[]
+   288→  bestOffer: string
+   289→  recommendedCampaign: string
+   290→  avgSpend: number
+   291→  color: string
+   292→}
+   293→
+   294→export const SEGMENTS: Segment[] = [
+   295→  { id: 'seg-1', name: 'Business Travelers', icon: '💼', count: 18, lifetimeValue: 18400, retentionRate: 64, preferredChannels: ['Direct Website', 'Corporate', 'Phone'], bestOffer: 'Corporate rate + late checkout', recommendedCampaign: 'Q4 corporate outreach', avgSpend: 1350, color: '#0d9488' },
+   296→  { id: 'seg-2', name: 'Digital Nomads', icon: '💻', count: 9, lifetimeValue: 22100, retentionRate: 71, preferredChannels: ['Instagram', 'Airbnb', 'Direct Website'], bestOffer: 'Long-stay discount + fast WiFi', recommendedCampaign: '30-day nomad package', avgSpend: 2100, color: '#9333ea' },
+   297→  { id: 'seg-3', name: 'Families', icon: '👨‍👩‍👧', count: 14, lifetimeValue: 14200, retentionRate: 48, preferredChannels: ['Booking.com', 'WhatsApp', 'Referral'], bestOffer: 'Family room + free kids breakfast', recommendedCampaign: 'School holiday promo', avgSpend: 1650, color: '#b45309' },
+   298→  { id: 'seg-4', name: 'Remote Workers', icon: '🏡', count: 7, lifetimeValue: 16800, retentionRate: 57, preferredChannels: ['Direct Website', 'Instagram'], bestOffer: 'Workspace + espresso bar access', recommendedCampaign: 'Work-from-lodge weekday', avgSpend: 980, color: '#15803d' },
+   299→  { id: 'seg-5', name: 'Couples', icon: '💑', count: 11, lifetimeValue: 12900, retentionRate: 52, preferredChannels: ['Airbnb', 'Instagram', 'Direct Website'], bestOffer: 'Suite upgrade + couples spa', recommendedCampaign: 'Anniversary/romance package', avgSpend: 1180, color: '#be123c' },
+   300→  { id: 'seg-6', name: 'Luxury Guests', icon: '✨', count: 6, lifetimeValue: 38600, retentionRate: 83, preferredChannels: ['Direct Website', 'Phone', 'Referral'], bestOffer: 'Penthouse + private chef', recommendedCampaign: 'VIP exclusive events', avgSpend: 3200, color: '#a16207' },
+   301→  { id: 'seg-7', name: 'Budget Guests', icon: '💰', count: 13, lifetimeValue: 4100, retentionRate: 22, preferredChannels: ['Booking.com', 'Agoda', 'Walk-in'], bestOffer: 'Standard room + free breakfast', recommendedCampaign: 'Last-minute weekday deal', avgSpend: 480, color: '#6b7280' },
+   302→  { id: 'seg-8', name: 'Corporate Clients', icon: '🏢', count: 5, lifetimeValue: 27440, retentionRate: 80, preferredChannels: ['Corporate', 'Phone', 'Email'], bestOffer: 'Negotiated rate + consolidated billing', recommendedCampaign: 'Contract renewal', avgSpend: 1150, color: '#0e7490' },
+   303→  { id: 'seg-9', name: 'Conference Guests', icon: '🎤', count: 8, lifetimeValue: 9200, retentionRate: 38, preferredChannels: ['Booking.com', 'Expedia', 'Direct Website'], bestOffer: 'Conference room + AV equipment', recommendedCampaign: 'Event-season push', avgSpend: 1150, color: '#c2410c' },
+   304→  { id: 'seg-10', name: 'International Tourists', icon: '🌍', count: 21, lifetimeValue: 15600, retentionRate: 34, preferredChannels: ['Airbnb', 'Booking.com', 'Instagram'], bestOffer: 'Airport pickup + city tour bundle', recommendedCampaign: 'Tourism partnership', avgSpend: 1480, color: '#0d9488' },
+   305→  { id: 'seg-11', name: 'Weekend Travelers', icon: '🌴', count: 19, lifetimeValue: 8800, retentionRate: 41, preferredChannels: ['WhatsApp', 'Instagram', 'Direct Website'], bestOffer: 'Weekend flash rate + late checkout', recommendedCampaign: 'Weekend flash sale', avgSpend: 920, color: '#ea580c' },
+   306→]
+   307→
+   308→// ===================== PREDICTIVE REVENUE =====================
+   309→export interface Prediction {
+   310→  id: string
+   311→  metric: string
+   312→  horizon: string
+   313→  predicted: number
+   314→  lower: number
+   315→  upper: number
+   316→  confidence: number
+   317→  trend: number
+   318→  unit: string
+   319→  factors: string[]
+   320→}
+   321→
+   322→export const PREDICTIONS: Prediction[] = [
+   323→  { id: 'pred-1', metric: 'Revenue next week', horizon: '7 days', predicted: 78400, lower: 68000, upper: 89000, confidence: 84, trend: 8, unit: '₵', factors: ['Current pace', 'Friday gap', 'Competitor pricing', 'Weather forecast'] },
+   324→  { id: 'pred-2', metric: 'Revenue next month', horizon: '30 days', predicted: 312000, lower: 268000, upper: 358000, confidence: 79, trend: 12, unit: '₵', factors: ['Seasonality', 'Booked pace', 'Corporate pipeline', 'Event calendar'] },
+   325→  { id: 'pred-3', metric: 'Occupancy by room (avg)', horizon: '14 days', predicted: 74, lower: 66, upper: 82, confidence: 88, trend: 4, unit: '%', factors: ['Booking pace', 'Day-of-week mix', 'Cancellation rate'] },
+   326→  { id: 'pred-4', metric: 'Expected cancellations', horizon: '14 days', predicted: 6, lower: 3, upper: 9, confidence: 72, trend: -3, unit: 'bookings', factors: ['OTA mix', 'Historical rate', 'Lead time'] },
+   327→  { id: 'pred-5', metric: 'Likely repeat bookings', horizon: '30 days', predicted: 11, lower: 7, upper: 15, confidence: 68, trend: 18, unit: 'bookings', factors: ['Loyalty tier mix', 'Campaign pipeline', 'Anniversary dates'] },
+   328→  { id: 'pred-6', metric: 'Demand spike (conf. week)', horizon: '6 days', predicted: 23, lower: 15, upper: 31, confidence: 81, trend: 35, unit: '% lift', factors: ['AICC conference', 'Sold-out competitors', 'Corporate outreach'] },
+   329→  { id: 'pred-7', metric: 'Staffing needed (housekeeping)', horizon: '7 days', predicted: 4, lower: 3, upper: 5, confidence: 90, trend: 0, unit: 'staff', factors: ['Turnover forecast', 'Check-in density', 'Inspection queue'] },
+   330→  { id: 'pred-8', metric: 'Cash flow (net)', horizon: '30 days', predicted: 142000, lower: 118000, upper: 168000, confidence: 83, trend: 9, unit: '₵', factors: ['Revenue forecast', 'Expense schedule', 'OTA payout lag'] },
+   331→]
+   332→
+   333→// 30-day revenue forecast series with confidence band
+   334→export const REVENUE_FORECAST_SERIES: Array<{ day: number; date: string; actual: number | null; predicted: number; lower: number; upper: number }> = (() => {
+   335→  const arr = []
+   336→  let base = 9200
+   337→  for (let i = -7; i <= 23; i++) {
+   338→    const d = new Date(today); d.setDate(d.getDate() + i)
+   339→    const weekend = d.getDay() === 5 || d.getDay() === 6 ? 1.35 : 1
+   340→    const noise = 1 + (Math.sin(i / 2) * 0.08)
+   341→    const predicted = Math.round(base * weekend * noise)
+   342→    const lower = Math.round(predicted * 0.86)
+   343→    const upper = Math.round(predicted * 1.16)
+   344→    arr.push({ day: i, date: iso(d), actual: i < 0 ? Math.round(predicted * (0.92 + Math.random() * 0.16)) : null, predicted, lower, upper })
+   345→  }
+   346→  return arr
+   347→})()
+   348→
+   349→// ===================== AI EXPERIMENTS =====================
+   350→export interface ExperimentVariant {
+   351→  id: string
+   352→  name: string
+   353→  description: string
+   354→  allocation: number
+   355→  bookings: number
+   356→  revenue: number
+   357→  profit: number
+   358→  conversionRate: number
+   359→  reviews: number
+   360→  avgRating: number
+   361→}
+   362→
+   363→export interface Experiment {
+   364→  id: string
+   365→  name: string
+   366→  question: string
+   367→  status: 'Running' | 'Scheduled' | 'Completed' | 'Analyzing'
+   368→  startDate: string
+   369→  endDate: string
+   370→  variants: ExperimentVariant[]
+   371→  winnerId?: string
+   372→  recommendation?: string
+   373→  confidence: number
+   374→  daysRun: number
+   375→}
+   376→
+   377→export const EXPERIMENTS: Experiment[] = [
+   378→  {
+   379→    id: 'exp-1',
+   380→    name: 'Weekend Offer Type Test',
+   381→    question: 'Which weekend incentive drives more bookings: 10% discount, free breakfast, or late checkout?',
+   382→    status: 'Running',
+   383→    startDate: daysFromNow(-9),
+   384→    endDate: daysFromNow(5),
+   385→    daysRun: 9,
+   386→    confidence: 78,
+   387→    variants: [
+   388→      { id: 'v1', name: '10% Discount', description: 'Straight 10% off weekend rate', allocation: 34, bookings: 18, revenue: 28800, profit: 18200, conversionRate: 5.2, reviews: 6, avgRating: 4.3 },
+   389→      { id: 'v2', name: 'Free Breakfast', description: 'Complimentary breakfast for 2', allocation: 33, bookings: 24, revenue: 31200, profit: 22400, conversionRate: 6.8, reviews: 9, avgRating: 4.7 },
+   390→      { id: 'v3', name: 'Late Checkout', description: '2 PM checkout (vs 11 AM)', allocation: 33, bookings: 14, revenue: 18900, profit: 15100, conversionRate: 4.1, reviews: 5, avgRating: 4.5 },
+   391→    ],
+   392→    recommendation: 'Free Breakfast is winning on bookings (+33%), revenue, AND reviews. Recommend rolling out 100% next weekend.',
+   393→  },
+   394→  {
+   395→    id: 'exp-2',
+   396→    name: 'Direct vs OTA Pricing Gap',
+   397→    question: 'How much cheaper should direct be vs OTA to maximize direct share without losing total revenue?',
+   398→    status: 'Scheduled',
+   399→    startDate: daysFromNow(2),
+   400→    endDate: daysFromNow(23),
+   401→    daysRun: 0,
+   402→    confidence: 0,
+   403→    variants: [
+   404→      { id: 'v1', name: '5% direct discount', description: 'Direct 5% below OTA', allocation: 33, bookings: 0, revenue: 0, profit: 0, conversionRate: 0, reviews: 0, avgRating: 0 },
+   405→      { id: 'v2', name: '10% direct discount', description: 'Direct 10% below OTA', allocation: 33, bookings: 0, revenue: 0, profit: 0, conversionRate: 0, reviews: 0, avgRating: 0 },
+   406→      { id: 'v3', name: '15% direct discount', description: 'Direct 15% below OTA + free perk', allocation: 34, bookings: 0, revenue: 0, profit: 0, conversionRate: 0, reviews: 0, avgRating: 0 },
+   407→    ],
+   408→  },
+   409→  {
+   410→    id: 'exp-3',
+   411→    name: 'WhatsApp Send Time',
+   412→    question: 'What time of day gets the highest WhatsApp campaign conversion?',
+   413→    status: 'Completed',
+   414→    startDate: daysFromNow(-30),
+   415→    endDate: daysFromNow(-9),
+   416→    daysRun: 21,
+   417→    confidence: 91,
+   418→    variants: [
+   419→      { id: 'v1', name: '8 AM', description: 'Morning send', allocation: 33, bookings: 6, revenue: 7800, profit: 6200, conversionRate: 3.1, reviews: 3, avgRating: 4.4 },
+   420→      { id: 'v2', name: '1 PM', description: 'Afternoon send', allocation: 33, bookings: 11, revenue: 14600, profit: 11800, conversionRate: 5.8, reviews: 5, avgRating: 4.6 },
+   421→      { id: 'v3', name: '7 PM', description: 'Evening send', allocation: 34, bookings: 9, revenue: 11900, profit: 9400, conversionRate: 4.7, reviews: 4, avgRating: 4.5 },
+   422→    ],
+   423→    winnerId: 'v2',
+   424→    recommendation: '1 PM is the winner (5.8% conversion). All WhatsApp campaigns now default to 1 PM.',
+   425→  },
+   426→]
+   427→
+   428→// ===================== DIRECT BOOKING INTELLIGENCE =====================
+   429→export interface OtaConversionRecord {
+   430→  guestId: string
+   431→  guestName: string
+   432→  source: BookingSource
+   433→  commissionPaid: number
+   434→  lifetimeBookings: number
+   435→  returnProbability: number
+   436→  potentialLifetimeValue: number
+   437→  estimatedFutureSavings: number
+   438→  converted: boolean
+   439→}
+   440→
+   441→export const OTA_CONVERSION_RECORDS: OtaConversionRecord[] = GUESTS
+   442→  .filter(g => ['Airbnb', 'Booking.com', 'Expedia', 'Agoda'].includes(g.bookingSource))
+   443→  .slice(0, 16)
+   444→  .map((g, i) => {
+   445→    const bookings = g.totalStays
+   446→    const commission = Math.round(g.lifetimeSpend * 0.15)
+   447→    const returnProb = Math.min(95, 40 + g.repeatVisits * 8 + (g.loyaltyTier === 'VIP' ? 15 : g.loyaltyTier === 'Gold' ? 8 : 0))
+   448→    const futureLTV = Math.round(g.lifetimeSpend / Math.max(1, bookings) * 4)
+   449→    const savings = Math.round(futureLTV * 0.15)
+   450→    return {
+   451→      guestId: g.id,
+   452→      guestName: g.name,
+   453→      source: g.bookingSource,
+   454→      commissionPaid: commission,
+   455→      lifetimeBookings: bookings,
+   456→      returnProbability: returnProb,
+   457→      potentialLifetimeValue: futureLTV,
+   458→      estimatedFutureSavings: savings,
+   459→      converted: i < 6,
+   460→    }
+   461→  })
+   462→
+   463→export const COMMISSION_SAVED_TIMELINE = [
+   464→  { month: 'Jul', saved: 4200, cumulative: 4200 },
+   465→  { month: 'Aug', saved: 6800, cumulative: 11000 },
+   466→  { month: 'Sep', saved: 9100, cumulative: 20100 },
+   467→  { month: 'Oct', saved: 12400, cumulative: 32500 },
+   468→  { month: 'Nov', saved: 15800, cumulative: 48300 },
+   469→  { month: 'Dec', saved: 19200, cumulative: 67500 },
+   470→]
+   471→
+   472→// ===================== KNOWLEDGE GRAPH =====================
+   473→export interface GraphNode {
+   474→  id: string
+   475→  label: string
+   476→  type: 'guest' | 'company' | 'family' | 'booking' | 'campaign' | 'room' | 'review' | 'experience' | 'referral' | 'staff' | 'property'
+   477→  x: number
+   478→  y: number
+   479→  color: string
+   480→  size: number
+   481→}
+   482→
+   483→export interface GraphEdge {
+   484→  from: string
+   485→  to: string
+   486→  label: string
+   487→  weight: number
+   488→}
+   489→
+   490→export const GRAPH_NODES: GraphNode[] = [
+   491→  { id: 'p1', label: PROPERTY.name, type: 'property', x: 50, y: 50, color: '#ea580c', size: 32 },
+   492→  { id: 'g1', label: 'David Kumar', type: 'guest', x: 22, y: 28, color: '#0d9488', size: 18 },
+   493→  { id: 'g2', label: 'Aisha Mensah', type: 'guest', x: 78, y: 30, color: '#0d9488', size: 18 },
+   494→  { id: 'g3', label: 'Kwame Boateng', type: 'guest', x: 18, y: 58, color: '#0d9488', size: 16 },
+   495→  { id: 'g4', label: 'Fatima Schmidt', type: 'guest', x: 80, y: 64, color: '#0d9488', size: 16 },
+   496→  { id: 'c1', label: 'MTN Ghana', type: 'company', x: 50, y: 18, color: '#be123c', size: 20 },
+   497→  { id: 'c2', label: 'UNICEF W. Africa', type: 'company', x: 88, y: 50, color: '#be123c', size: 16 },
+   498→  { id: 'f1', label: 'Boateng Family', type: 'family', x: 30, y: 78, color: '#9333ea', size: 16 },
+   499→  { id: 'f2', label: 'Mensah Family', type: 'family', x: 70, y: 80, color: '#9332ea', size: 16 },
+   500→  { id: 'b1', label: 'Booking #1042', type: 'booking', x: 40, y: 42, color: '#b45309', size: 12 },
+   501→  { id: 'b2', label: 'Booking #1088', type: 'booking', x: 62, y: 44, color: '#b45309', size: 12 },
+   502→  { id: 'cmp1', label: 'Loyalty Reboot', type: 'campaign', x: 12, y: 44, color: '#15803d', size: 14 },
+   503→  { id: 'cmp2', label: 'Weekend Flash', type: 'campaign', x: 88, y: 36, color: '#15803d', size: 14 },
+   504→  { id: 'r1', label: 'Room 303 Penthouse', type: 'room', x: 50, y: 78, color: '#a16207', size: 14 },
+   505→  { id: 'r2', label: 'Room 201 Suite', type: 'room', x: 38, y: 88, color: '#a16207', size: 12 },
+   506→  { id: 'rev1', label: '5★ Google Review', type: 'review', x: 60, y: 22, color: '#0e7490', size: 12 },
+   507→  { id: 'exp1', label: 'Cape Coast Tour', type: 'experience', x: 22, y: 88, color: '#c2410c', size: 12 },
+   508→  { id: 'ref1', label: 'Referral: Ngozi', type: 'referral', x: 88, y: 72, color: '#6b7280', size: 11 },
+   509→  { id: 's1', label: 'Akua (Housekeeping)', type: 'staff', x: 12, y: 64, color: '#1f2937', size: 12 },
+   510→]
+   511→
+   512→export const GRAPH_EDGES: GraphEdge[] = [
+   513→  { from: 'g1', to: 'p1', label: 'stayed at', weight: 5 },
+   514→  { from: 'g2', to: 'p1', label: 'stayed at', weight: 4 },
+   515→  { from: 'g3', to: 'p1', label: 'stayed at', weight: 3 },
+   516→  { from: 'g4', to: 'p1', label: 'stayed at', weight: 3 },
+   517→  { from: 'g1', to: 'c1', label: 'CEO of', weight: 5 },
+   518→  { from: 'g3', to: 'f1', label: 'head of', weight: 4 },
+   519→  { from: 'g2', to: 'f2', label: 'member', weight: 3 },
+   520→  { from: 'c1', to: 'p1', label: '42 bookings', weight: 6 },
+   521→  { from: 'c2', to: 'p1', label: '19 bookings', weight: 4 },
+   522→  { from: 'b1', to: 'g1', label: 'by', weight: 3 },
+   523→  { from: 'b2', to: 'g2', label: 'by', weight: 3 },
+   524→  { from: 'b1', to: 'r1', label: 'in', weight: 2 },
+   525→  { from: 'b2', to: 'r2', label: 'in', weight: 2 },
+   526→  { from: 'cmp1', to: 'g1', label: 'targeted', weight: 2 },
+   527→  { from: 'cmp2', to: 'g3', label: 'targeted', weight: 2 },
+   528→  { from: 'g2', to: 'rev1', label: 'wrote', weight: 3 },
+   529→  { from: 'g1', to: 'exp1', label: 'booked', weight: 2 },
+   530→  { from: 'g2', to: 'ref1', label: 'referred', weight: 3 },
+   531→  { from: 'ref1', to: 'p1', label: 'new guest', weight: 2 },
+   532→  { from: 's1', to: 'r2', label: 'cleans', weight: 2 },
+   533→]
+   534→
+   535→// ===================== MULTI-PROPERTY =====================
+   536→export interface PropertySummary {
+   537→  id: string
+   538→  name: string
+   539→  type: string
+   540→  location: string
+   541→  rooms: number
+   542→  occupancy: number
+   543→  revpar: number
+   544→  adr: number
+   545→  rating: number
+   546→  directShare: number
+   547→  revenueMTD: number
+   548→  status: 'Active' | 'Onboarding' | 'Lead'
+   549→  emoji: string
+   550→}
+   551→
+   552→export const PROPERTIES: PropertySummary[] = [
+   553→  { id: 'prop-1', name: PROPERTY.name, type: 'Guest House', location: 'East Legon, Accra', rooms: 18, occupancy: 72, revpar: 612, adr: 850, rating: 4.4, directShare: 41, revenueMTD: 312000, status: 'Active', emoji: '🏡' },
+   554→  { id: 'prop-2', name: 'Coconut Bay Boutique', type: 'Boutique Hotel', location: 'Cape Coast', rooms: 24, occupancy: 68, revpar: 540, adr: 790, rating: 4.5, directShare: 38, revenueMTD: 348000, status: 'Active', emoji: '🏨' },
+   555→  { id: 'prop-3', name: 'Volta Lakeside Lodge', type: 'Lodge', location: 'Akosombo', rooms: 12, occupancy: 61, revpar: 480, adr: 720, rating: 4.6, directShare: 52, revenueMTD: 168000, status: 'Active', emoji: '🏞️' },
+   556→  { id: 'prop-4', name: 'City Serviced Apartments', type: 'Serviced Apartments', location: 'Osu, Accra', rooms: 30, occupancy: 0, revpar: 0, adr: 0, rating: 0, directShare: 0, revenueMTD: 0, status: 'Onboarding', emoji: '🏢' },
+   557→  { id: 'prop-5', name: 'Sahara Desert Camp', type: 'Campground', location: 'Tamale', rooms: 16, occupancy: 0, revpar: 0, adr: 0, rating: 0, directShare: 0, revenueMTD: 0, status: 'Lead', emoji: '⛺' },
+   558→]
+   559→
+   560→export const HOSPITALITY_TYPES = [
+   561→  { type: 'Guest Houses', icon: '🏡', count: 1, potential: 'High', wedge: true },
+   562→  { type: 'Boutique Hotels', icon: '🏨', count: 1, potential: 'High', wedge: false },
+   563→  { type: 'Serviced Apartments', icon: '🏢', count: 1, potential: 'High', wedge: false },
+   564→  { type: 'Vacation Rentals', icon: '🏠', count: 0, potential: 'High', wedge: false },
+   565→  { type: 'Lodges', icon: '🏞️', count: 1, potential: 'Medium', wedge: false },
+   566→  { type: 'Hostels', icon: '🛏️', count: 0, potential: 'Medium', wedge: false },
+   567→  { type: 'Resorts', icon: '🏝️', count: 0, potential: 'High', wedge: false },
+   568→  { type: 'Campgrounds', icon: '⛺', count: 0, potential: 'Medium', wedge: false },
+   569→  { type: 'Corporate Housing', icon: '🏬', count: 0, potential: 'Medium', wedge: false },
+   570→  { type: 'Student Accommodation', icon: '🎓', count: 0, potential: 'Low', wedge: false },
+   571→]
+   572→
+   573→// ===================== MARKETPLACE =====================
+   574→export interface MarketplaceService {
+   575→  id: string
+   576→  name: string
+   577→  category: string
+   578→  provider: string
+   579→  rating: number
+   580→  reviews: number
+   581→  price: string
+   582→  installed: boolean
+   583→  description: string
+   584→  emoji: string
+   585→  color: string
+   586→}
+   587→
+   588→export const MARKETPLACE: MarketplaceService[] = [
+   589→  { id: 'mkt-1', name: 'SparkleClean Pro', category: 'Cleaning Services', provider: 'SparkleClean Ltd', rating: 4.8, reviews: 320, price: '₵80/turnover', installed: true, description: 'On-demand deep cleaning & turnover teams with photo proof.', emoji: '🧹', color: '#0d9488' },
+   590→  { id: 'mkt-2', name: 'Wash & Fold Express', category: 'Laundry', provider: 'FreshLine', rating: 4.6, reviews: 180, price: '₵15/kg', installed: true, description: 'Same-day laundry pickup & delivery for guest linens and clothing.', emoji: '👕', color: '#9333ea' },
+   591→  { id: 'mkt-3', name: 'AkwaabaTransfers', category: 'Airport Transfers', provider: 'RideGH', rating: 4.9, reviews: 540, price: '₵180/trip', installed: true, description: 'Reliable airport pickups with flight tracking and meet-and-greet.', emoji: '🚗', color: '#b45309' },
+   592→  { id: 'mkt-4', name: 'GoldCoast Tours', category: 'Tour Guides', provider: 'Nana Adventures', rating: 4.9, reviews: 410, price: '₵450/day', installed: false, description: 'Curated day tours: Cape Coast, Kakum, Aburi Gardens, local markets.', emoji: '🗺️', color: '#15803d' },
+   593→  { id: 'mkt-5', name: 'AkwaabaEats', category: 'Restaurants', provider: 'FoodFleet', rating: 4.5, reviews: 260, price: 'Commission 10%', installed: false, description: 'In-room dining from 30+ partner restaurants, auto-billed to room.', emoji: '🍽️', color: '#be123c' },
+   594→  { id: 'mkt-6', name: 'LensMen Studios', category: 'Photographers', provider: 'LensMen', rating: 4.7, reviews: 95, price: '₵1,200/shoot', installed: false, description: 'Professional property & experience photography for listings.', emoji: '📷', color: '#0e7490' },
+   595→  { id: 'mkt-7', name: 'EventCraft GH', category: 'Event Planners', provider: 'EventCraft', rating: 4.8, reviews: 140, price: 'From ₵3,500', installed: false, description: 'Full-service event planning for weddings, conferences, retreats.', emoji: '🎉', color: '#c2410c' },
+   596→  { id: 'mkt-8', name: 'FixIt Maintenance', category: 'Maintenance Companies', provider: 'FixIt GH', rating: 4.4, reviews: 210, price: '₵120/visit', installed: false, description: 'Licensed HVAC, plumbing & electrical technicians on call.', emoji: '🔧', color: '#a16207' },
+   597→]
+   598→
+   599→// ===================== GUEST JOURNEY =====================
+   600→export type JourneyStage = 'discovery' | 'inquiry' | 'reservation' | 'arrival' | 'stay' | 'experiences' | 'review' | 'loyalty' | 'repeat' | 'referral'
+   601→
+   602→export interface JourneyStep {
+   603→  stage: JourneyStage
+   604→  label: string
+   605→  status: 'complete' | 'current' | 'upcoming' | 'lost'
+   606→  date?: string
+   607→  value?: number
+   608→  note?: string
+   609→}
+   610→
+   611→export function journeyForGuest(guestId: string): JourneyStep[] {
+   612→  const guest = GUESTS.find(g => g.id === guestId)
+   613→  if (!guest) return []
+   614→  const isOta = ['Airbnb', 'Booking.com', 'Expedia', 'Agoda'].includes(guest.bookingSource)
+   615→  const lastRes = RESERVATIONS.filter(r => r.guestId === guestId).sort((a, b) => b.checkIn.localeCompare(a.checkIn))[0]
+   616→  return [
+   617→    { stage: 'discovery', label: isOta ? `Discovered via ${guest.bookingSource}` : 'Discovered your direct site', status: 'complete', date: guest.firstSeen, note: isOta ? 'Commission paid to OTA' : 'No commission — owned channel' },
+   618→    { stage: 'inquiry', label: 'Sent inquiry via WhatsApp', status: 'complete', date: lastRes?.createdAt, note: isOta ? 'OTA handled inquiry' : 'You owned the conversation' },
+   619→    { stage: 'reservation', label: `Reserved ${lastRes ? ROOMS.find(r => r.id === lastRes.roomIds[0])?.name : 'a room'}`, status: 'complete', date: lastRes?.checkIn, value: lastRes?.grossRevenue },
+   620→    { stage: 'arrival', label: 'Checked in', status: 'complete', date: lastRes?.checkIn },
+   621→    { stage: 'stay', label: `Stayed ${lastRes ? Math.ceil((new Date(lastRes.checkOut).getTime() - new Date(lastRes.checkIn).getTime()) / 86400000) : 2} nights`, status: 'complete', date: lastRes?.checkOut, note: guest.favoriteRoom ? `Favorite: ${guest.favoriteRoom}` : undefined },
+   622→    { stage: 'experiences', label: 'Experiences booked', status: guest.totalStays > 2 ? 'complete' : 'lost', note: guest.totalStays > 2 ? 'Airport pickup + tour' : 'No upsell — revenue lost' },
+   623→    { stage: 'review', label: `Left a ${guest.avgRatingGiven ?? '—'}★ review`, status: (guest.avgRatingGiven ?? 0) >= 4 ? 'complete' : 'upcoming' },
+   624→    { stage: 'loyalty', label: `Joined ${guest.loyaltyTier} tier`, status: guest.loyaltyTier !== 'Bronze' ? 'complete' : 'current', note: `${guest.loyaltyPoints} points` },
+   625→    { stage: 'repeat', label: `Returned ${guest.repeatVisits} times`, status: guest.repeatVisits > 0 ? 'complete' : 'upcoming', note: guest.repeatVisits > 0 ? `${fmtPctLocal(Math.round(guest.repeatVisits / Math.max(1, guest.totalStays) * 100))} repeat rate` : 'Opportunity: convert to repeat' },
+   626→    { stage: 'referral', label: 'Referred new guests', status: guest.tags.includes('referral') ? 'complete' : 'upcoming', note: guest.tags.includes('referral') ? 'Top referrer' : 'Incentivize referral' },
+   627→  ]
+   628→}
+   629→
+   630→function fmtPctLocal(n: number) { return `${n}%` }
+   631→
+   632→// ===================== CEO DAILY BRIEF ACTIONS =====================
+   633→export interface BriefAction {
+   634→  id: string
+   635→  title: string
+   636→  detail: string
+   637→  impact: string
+   638→  type: 'approve' | 'review' | 'info'
+   639→  status: 'pending' | 'approved' | 'rejected'
+   640→  agentId: string
+   641→}
+   642→
+   643→export const BRIEF_ACTIONS: BriefAction[] = [
+   644→  { id: 'ba-1', title: 'Approve: raise penthouse rate to ₵2,600', detail: 'Pricing Analyst found your penthouse is 48% below Kempinski\'s entry suite. Test rate next weekend projected +₵9,600.', impact: '+₵9,600', type: 'approve', status: 'pending', agentId: 'agent-4' },
+   645→  { id: 'ba-2', title: 'Approve: add free breakfast perk for weekend', detail: 'Free breakfast historically lifts weekend conversions 18% at near-zero cost. Marketing Director ready to launch.', impact: '+4 bookings', type: 'approve', status: 'pending', agentId: 'agent-2' },
+   646→  { id: 'ba-3', title: 'Review: 3 unanswered negative reviews', detail: 'Reputation Manager drafted AI replies for Fatima (AC) and Linda (check-in wait). Send to protect rating.', impact: '+0.2★', type: 'review', status: 'pending', agentId: 'agent-6' },
+   647→  { id: 'ba-4', title: 'Review: expedite room 102 AC repair', detail: 'Operations flagged recurring AC noise complaint. ₵350 repair prevents further negative reviews.', impact: '-1 complaint/week', type: 'review', status: 'pending', agentId: 'agent-8' },
+   648→  { id: 'ba-5', title: 'Info: 7 booking widget abandonments today', detail: 'AI auto-sent recovery emails with 10% coupon. Will report conversions tomorrow.', impact: 'Auto-running', type: 'info', status: 'pending', agentId: 'agent-2' },
+   649→  { id: 'ba-6', title: 'Info: weekend flash sale sent to 48 guests', detail: '12 opens, 3 conversions so far. Projected +6 bookings by Friday.', impact: '+₵7,400', type: 'info', status: 'pending', agentId: 'agent-2' },
+   650→]
+   651→
+   652→// ===================== DIGITAL TWIN SUMMARY =====================
+   653→export const DIGITAL_TWIN = {
+   654→  rooms: ROOMS.length,
+   655→  activeBookings: RESERVATIONS.filter(r => r.status === 'Checked-in' || r.status === 'Confirmed').length,
+   656→  totalGuests: GUESTS.length,
+   657→  vipGuests: GUESTS.filter(g => g.loyaltyTier === 'VIP').length,
+   658→  activeCampaigns: 4,
+   659→  openIssues: 3,
+   660→  cleaningTasks: 7,
+   661→  activeAgents: AI_AGENTS.filter(a => a.status !== 'Idle').length,
+   662→  connectedChannels: CHANNELS.filter(c => c.connected).length,
+   663→  activeReviews: REVIEWS.length,
+   664→  experiences: EXPERIENCES.length,
+   665→  corporateAccounts: CORPORATE.filter(c => c.status === 'Active').length,
+   666→  revenueStreams: 8,
+   667→  liveMetrics: {
+   668→    occupancyNow: 61,
+   669→    revenueToday: 12400,
+   670→    inquiriesToday: 14,
+   671→    aiActionsToday: 47,
+   672→    autoActionsToday: 31,
+   673→    approvalsPending: 4,
+   674→  },
+   675→}
+   676→
+   677→// ===================== WORKFORCE COLLABORATION CASCADES =====================
+   678→export interface Cascade {
+   679→  id: string
+   680→  trigger: string
+   681→  steps: { agentId: string; role: string; agent: string; action: string; status: 'done' | 'active' | 'pending'; timestamp: string }[]
+   682→  outcome: string
+   683→  status: 'running' | 'complete'
+   684→  startedAt: string
+   685→}
+   686→
+   687→export const CASCADES: Cascade[] = [
+   688→  {
+   689→    id: 'cas-1',
+   690→    trigger: 'Revenue Director detected Friday occupancy at 42%',
+   691→    status: 'running',
+   692→    startedAt: '2h ago',
+   693→    steps: [
+   694→      { agentId: 'agent-1', role: 'Revenue Director', agent: 'Kofi', action: 'Flagged low Friday occupancy (11 empty rooms)', status: 'done', timestamp: '2h ago' },
+   695→      { agentId: 'agent-4', role: 'Pricing Analyst', agent: 'Abena', action: 'Analyzed demand + competitors → recommended 7% price cut', status: 'done', timestamp: '1h 50m ago' },
+   696→      { agentId: 'agent-2', role: 'Marketing Director', agent: 'Ama', action: 'Launched WhatsApp flash sale to 48 lapsed guests', status: 'done', timestamp: '1h ago' },
+   697→      { agentId: 'agent-3', role: 'CRM Manager', agent: 'Yaw', action: 'Contacting 12 lapsed VIP guests personally', status: 'active', timestamp: 'now' },
+   698→      { agentId: 'agent-3', role: 'Guest Relations', agent: 'Akosua', action: 'Preparing free-breakfast perk (needs approval)', status: 'pending', timestamp: '—' },
+   699→      { agentId: 'agent-1', role: 'Revenue Director', agent: 'Kofi', action: 'Will report impact Sat 9 AM', status: 'pending', timestamp: '—' },
+   700→    ],
+   701→    outcome: 'Expected +6 rooms filled, +₵7,400 revenue',
+   702→  },
+   703→  {
+   704→    id: 'cas-2',
+   705→    trigger: 'Pricing Analyst found penthouse 48% underpriced',
+   706→    status: 'running',
+   707→    startedAt: '1h ago',
+   708→    steps: [
+   709→      { agentId: 'agent-4', role: 'Pricing Analyst', agent: 'Abena', action: 'Competitor scan: penthouse 48% below Kempinski', status: 'done', timestamp: '1h ago' },
+   710→      { agentId: 'agent-1', role: 'Revenue Director', agent: 'Kofi', action: 'Proposed ₵2,600 test rate → awaiting owner approval', status: 'active', timestamp: 'now' },
+   711→      { agentId: 'agent-5', role: 'OTA Manager', agent: 'Kwabena', action: 'Will sync new rate across 5 OTAs once approved', status: 'pending', timestamp: '—' },
+   712→      { agentId: 'agent-9', role: 'Finance Manager', agent: 'Efua', action: 'Will track RevPAR impact next 14 days', status: 'pending', timestamp: '—' },
+   713→    ],
+   714→    outcome: 'Projected +₵9,600 if approved',
+   715→  },
+   716→  {
+   717→    id: 'cas-3',
+   718→    trigger: 'Reputation Manager detected 2 unanswered negative reviews',
+   719→    status: 'running',
+   720→    startedAt: '30m ago',
+   721→    steps: [
+   722→      { agentId: 'agent-6', role: 'Reputation Manager', agent: 'Akosua', action: 'Drafted AI replies for Fatima & Linda reviews', status: 'active', timestamp: 'now' },
+   723→      { agentId: 'agent-8', role: 'Operations Manager', agent: 'Adwoa', action: 'Will expedite room 102 AC repair (needs approval)', status: 'pending', timestamp: '—' },
+   724→      { agentId: 'agent-3', role: 'Guest Relations', agent: 'Akosua', action: 'Will send service-recovery outreach to both guests', status: 'pending', timestamp: '—' },
+   725→    ],
+   726→    outcome: 'Projected rating recovery +0.2★',
+   727→  },
+   728→]
+   729→
+   730→// ===================== WEBSITE BUILDER =====================
+   731→export const WEBSITE_SECTIONS = [
+   732→  { id: 'ws-1', name: 'Hero', type: 'hero', enabled: true, content: 'Akwaaba Boutique Lodge — Where every guest feels at home' },
+   733→  { id: 'ws-2', name: 'Room Gallery', type: 'rooms', enabled: true, content: '11 rooms across 6 types, from ₵450/night' },
+   734→  { id: 'ws-3', name: 'Booking Widget', type: 'booking', enabled: true, content: 'Direct booking engine — save 15% vs OTA' },
+   735→  { id: 'ws-4', name: 'Experiences', type: 'experiences', enabled: true, content: '8 local experiences from airport pickup to spa' },
+   736→  { id: 'ws-5', name: 'Reviews', type: 'reviews', enabled: true, content: '4.4★ across Google, Booking.com, Airbnb' },
+   737→  { id: 'ws-6', name: 'Google Maps', type: 'map', enabled: true, content: 'East Legon, Accra — 8 min from Kotoka Airport' },
+   738→  { id: 'ws-7', name: 'WhatsApp Chat', type: 'chat', enabled: true, content: 'Instant AI concierge on WhatsApp' },
+   739→  { id: 'ws-8', name: 'Blog', type: 'blog', enabled: false, content: 'AI-generated local guides & travel tips' },
+   740→  { id: 'ws-9', name: 'SEO Meta', type: 'seo', enabled: true, content: 'Auto-optimized for "guest house Accra", "boutique lodge East Legon"' },
+   741→  { id: 'ws-10', name: 'Online Payments', type: 'payments', enabled: true, content: 'Stripe, Flutterwave, Paystack, PaySwap' },
+   742→]
+   743→

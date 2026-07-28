@@ -281,3 +281,276 @@ Stage Summary:
 - App is production-quality, responsive, dark-mode by default, luxury hospitality aesthetic
 - Stable on port 3000; user previews via the Preview Panel (Caddy :81 → :3000)
 - TASK COMPLETE
+
+# ============================================================
+# V2 — From PMS to Autonomous Revenue Operating System
+# ============================================================
+
+---
+Task ID: V2-0
+Agent: Orchestrator (main)
+Task: V2 kickoff — V1 pushed to GitHub (pectoraux/staypilot-ai); now building autonomous transformation
+
+V2 scope: Digital Twin, Active Missions, Autonomous AI Workforce (collaboration workflows), Revenue Opportunity Feed, AI Memory, Booking Funnel, Guest Journey, Intelligent Segmentation, Predictive Revenue, AI Experiments, Direct Booking Intelligence, Hospitality Knowledge Graph, CEO Daily Brief (approve/reject), Multi-Property, Website Builder, Marketplace.
+
+V2 data layer going into src/lib/data-v2.ts (append-only, reuses V1 data). Nav restructured into groups: Command / Intelligence / Operations / Guests / Growth / Revenue / Platform.
+
+---
+Task ID: V2-3
+Agent: full-stack-developer
+Task: Build two V2 StayPilot AI modules — Active Missions (missions.tsx) + Revenue Opportunity Feed (opportunities.tsx)
+
+Work Log:
+- Read worklog.md (V1 + V2-0 foundation), data-v2.ts (MISSIONS + OPPORTUNITIES + types), data.ts (AI_AGENTS), format.ts, shared.tsx, mission-control.tsx (style reference for V2 mission card patterns), agents.tsx/marketing.tsx (framer-motion + sonner patterns), globals.css (scroll-area-fancy / ai-pulse / glass classes), ui component exports (tabs, toggle-group, dialog, select, scroll-area, avatar, tooltip, separator, textarea, progress, badge, button, card). Created /agent-ctx/V2-3-full-stack-developer.md.
+- Confirmed do-not-modify list (registry.tsx, shared.tsx, data.ts, data-v2.ts, format.ts, store.ts, nav.ts, app-shell.tsx, page.tsx, layout.tsx, globals.css, api/ai/route.ts, mission-control.tsx, dashboard.tsx).
+
+- Built `src/components/modules/missions.tsx` (~530 lines) → `MissionsModule`:
+  * SectionHeader "Active Missions" + subtitle "The AI runs these continuously — you approve, it executes." + Create Mission button (orange)
+  * Autonomous hero strip: Bot icon, "Autonomous workforce online · 24/7" with emerald pulse-dot, counts of auto-executing missions + pending approvals
+  * 4 StatCards: active missions (Target/brand), total expected revenue (TrendingUp/teal, sum of MISSIONS[].expectedRevenue), avg progress (Activity/gold), approvals pending (Hand/violet, sum of pending actions)
+  * Filter row: shadcn Tabs (All / Active / At Risk / Awaiting Approval / Completed) with live count badges per filter
+  * MissionCard (rich, expandable via framer-motion AnimatePresence height-auto): top accent gradient bar by type, type-icon gradient tile (occupancy/conversion/retention/pricing/reputation/direct), name, status pill (per-status color), Auto-executing badge (orange ai-pulse), LeadAgentChip (Avatar fallback with agent.color + name · role), ETA + deadline (relativeDate), progress bar with current→target metric (currentValue unit → targetValue unit, tabular-nums), % complete
+  * Expanded section: 3 stat tiles (Expected revenue emerald / Commission saved teal OR North star violet / Progress % orange), AgentChain horizontal stepper (ChainNode = status circle done=emerald Check / active=orange ai-pulse Activity / pending=muted Clock + role label + agent name + action + Tooltip; connected by horizontal bars; horizontal scroll-area-fancy on mobile), ActionsTimeline vertical rail (per-action status node auto=orange Zap ai-pulse / done=emerald Check / in-progress=amber Loader2 spin / pending=muted Clock / approved=teal CheckCircle2; agent badge colored by AI_AGENTS[].color; ⚡ AUTO badge on auto actions; ActionStatusBadge; description + timestamp)
+  * Action button row per mission: Pause/Resume mission (toast), Approve next action (disabled if no pending, count badge, toast), View details (toast)
+  * CreateMissionDialog: shadcn Dialog with type Select (6 types with emojis) + goal Textarea + "Engage AI workforce" button → sonner success toast "Mission created, AI workforce engaged"
+  * Footer explainer card: Brain icon + "How autonomous missions work" with inline AUTO badge + agent-chain narrative
+
+- Built `src/components/modules/opportunities.tsx` (~360 lines) → `OpportunitiesModule`:
+  * SectionHeader "Revenue Opportunity Feed" + subtitle "The AI surfaces revenue opportunities continuously — one click to execute." + "Run all auto-opportunities" button (orange)
+  * Hero strip: Sparkles icon, "AI scanning 24/7 · N opportunities live" + Live feed emerald pulse-dot
+  * 4 StatCards: total opportunities (Target/brand), potential revenue (TrendingUp/teal, sum of OPPORTUNITIES[].potentialRevenue), avg confidence (Brain/violet), executed today (CheckCircle2/gold, tracked via local Set state)
+  * Filter + sort Card: FilterChip pills (All + one per unique OpportunityType in data, each with count Badge), Sort Select (Potential revenue / Confidence / Deadline), "Showing X of Y" counter
+  * Opportunity feed: ScrollArea max-h-[640px] scroll-area-fancy of OpportunityRow cards wrapped in framer-motion AnimatePresence (layout for smooth reflow). Each row: type-accent icon tile with opp.icon, title + type chip + Auto-runnable badge (orange ai-pulse), detail (line-clamp-2), potential revenue (emerald fmtMoneyShort + full), meta row with ConfidenceBar (Brain + violet mini progress + %, color-graded emerald/violet/amber by threshold), deadline (Clock + relativeDate), AgentChip (Avatar + name · role), Recommended-action dashed-border chip (Sparkles + "Recommended: {action}"), one-click Auto-run button (orange, opp.autoExecutable) or Review button (outline) → executes → green border + bg + Executed badge + disabled "Executed" button + sonner toast with revenue + commission saved breakdown
+  * Summary Card (gradient emerald/teal/orange): "If you execute all N remaining" with 4 tiles (projected revenue, projected commission saved, captured revenue, captured savings) + secondary "Run all auto-opportunities" button + footer line counting auto-runnable remaining
+  * Local state: executedIds Set<string>; execute(opp) adds + computes commission saved (15% of revenue for direct-conversion types: repeat-likelihood/anniversary/birthday/referral/lapsed-corporate/abandonment); runAllAuto() batch-executes all auto-runnable + not-yet-executed with toast summarizing total captured revenue + commission saved
+  * Derived values from Set: remaining, projectedRevenue, projectedSavings, executedRevenue, executedSavings
+
+- Both modules: 'use client', warm palette (orange #ea580c / teal #0d9488 / amber / rose / violet — NO indigo/blue), dark-mode safe via Tailwind tokens + dark: variants, glass/gradient accents, framer-motion entrances + AnimatePresence, responsive mobile-first (4→2 col grids, agent chain horizontal-scrolls on mobile, button rows wrap), touch-friendly (≥36px buttons, 40px chips), hover states (border-orange-500/30), ai-pulse on auto elements, scroll-area-fancy for long lists, sonner toasts with richColors + closeButton mounted inside each module (since layout.tsx is locked and only mounts radix toaster)
+- Reused exactly the specified shared APIs (MISSIONS, OPPORTUNITIES, AI_AGENTS, fmtMoney, fmtMoneyShort, fmtPct, relativeDate, initials, StatCard, SectionHeader, StatusPill, toast, shadcn ui components, framer-motion, lucide-react, types Mission/Opportunity/MissionAction/MissionType/OpportunityType). ToggleGroup was available but Tabs with badge counts was chosen for the missions filter (more elegant for "show count per filter"). PriorityPill imported but unused — cleaned out before lint.
+
+Quality gates:
+- `bun run lint` → exit 0, no output (clean across entire project)
+- `npx tsc --noEmit --skipLibCheck` → zero errors in missions.tsx or opportunities.tsx (pre-existing errors in locked files mission-control.tsx:183/192, data-v2.ts:344, data.ts:87-180 — not my responsibility)
+- Dev server log shows ✓ Ready + GET / 200 (modules are lazy-loaded via React.lazy in registry.tsx, compile on first navigation; tsc + lint clean guarantees they compile when accessed)
+- Only the two task files were modified; all protected files untouched
+
+Stage Summary:
+- Both V2 modules fully implemented and lint/TS-clean. The mission agent-chain horizontal stepper and actions timeline are premium-grade — the differentiator vs a PMS — with status-coded nodes (emerald Check / orange ai-pulse Activity / muted Clock), per-agent color badges, ⚡ AUTO badges that pulse, and Tooltip-wrapped chain nodes showing role + action.
+- Auto-executed actions and auto-runnable opportunities pulse subtly via the `ai-pulse` class (defined in locked globals.css) to convey "the AI did this itself."
+- The OpportunitiesModule feels live: executed Set state updates instantly swap button → "Executed ✓", emerald border/bg appears, summary card recomputes captured vs projected in real time, framer-motion `layout` animates the reflow.
+- All toasts use sonner's `toast.success/info/error` with descriptive messages + revenue/commission breakdowns.
+- Work record + design notes saved to /agent-ctx/V2-3-full-stack-developer.md for downstream agents.
+
+---
+Task ID: V2-7
+Agent: full-stack-developer
+Task: Build THREE StayPilot AI V2 modules — Multi-Property, Website Builder, Marketplace — using shared APIs (data-v2, data, format, shared, ui, recharts, lucide, framer-motion, sonner). Luxury hospitality warm palette (orange #ea580c / teal #0d9488 / amber / rose / violet), NO indigo/blue, dark-mode safe, responsive. Do NOT modify locked files.
+
+Work Log:
+- Read worklog.md (all prior V1 + V2 history), data-v2.ts (PropertySummary, HOSPITALITY_TYPES, MarketplaceService, WEBSITE_SECTIONS exports), data.ts (PROPERTY/ROOMS/EXPERIENCES/REVIEWS), shared.tsx (StatCard/SectionHeader/StatusPill/TierBadge API), format.ts (fmtMoney/fmtMoneyShort/fmtPct), booking-engine.tsx + experiences.tsx + marketing.tsx for conventions, globals.css for design tokens.
+
+- **multi-property.tsx** (`MultiPropertyModule`):
+  * Hero (orange→amber→teal gradient w/ radial light, glass chip): "Multi-Property Portfolio" + exact subtitle. Add property + Export report CTAs.
+  * 6 StatCards computed from PROPERTIES.filter(Active): Active Properties (3 of 5), Total Rooms (54 active · 100 portfolio-wide), Portfolio Occupancy (67%), Revenue MTD (₵828K), Avg Rating (4.5★), Direct Share (44%).
+  * Property cards grid (1/2/3/5-col responsive): gradient header band w/ emoji tile + name + location + StatusPill; active cards show occupancy progress + 3-tile metrics (RevPAR/ADR/Direct) + Stars rating + Revenue MTD + "View dashboard →" (clickable w/ toast); Onboarding/Lead cards show dashed setup block + "Complete setup"/"Convert lead" CTA.
+  * Cross-property benchmarking: 2 recharts BarCharts side-by-side — Occupancy by Property (top performer in #ea580c) + RevPAR by Property (top performer in #0d9488), Crown badge "Top: {name}", custom tooltip.
+  * Shared assets card: "Shared guest database (64 guests)", "Shared loyalty program (9 VIPs)", "Cross-property benchmarking (Live)" — colored icon tiles.
+  * AI portfolio recommendation card (orange-tinted w/ glow): exact requested Coconut Bay / 4.5★ / 38% direct share / Akwaaba playbook / +₵42K/year copy + 3-tile impact grid (38%→60%, 90 days, +₵42K/yr) + Replicate/View buttons.
+  * Hospitality OS expansion: subtitle "Same AI core. 10 hospitality verticals. Guest houses are the wedge into a $180B hospitality platform." Grid of all 10 HOSPITALITY_TYPES (emoji, count, potential pill High/Med/Low), Guest Houses get floating orange "Wedge" badge + orange-tinted card.
+
+- **website-builder.tsx** (`WebsiteBuilderModule`):
+  * Hero (teal→emerald gradient w/ orange radial): "Website Builder" + exact subtitle. Publish site + Open preview CTAs (publish toast: "Website published to staypilot.ai/akwaaba").
+  * 4 StatCards: Visitors MTD (3,482 +18%), Widget Conversions (142, 4.1%), SEO Ranking (#3 ↑5 "guest house Accra"), Direct Revenue MTD (₵127.8K +22%).
+  * Live website preview (~60% width on lg) — the wow piece — realistic phone frame: notch, status bar (9:41, 5G, custom battery SVG), browser chrome (3 traffic-light dots + address bar `staypilot.ai/akwaaba` + lock + "SEO ✓" badge), scrollable site body (max-h-560px, scroll-area-fancy). Renders conditionally based on toggle state:
+    - Hero: orange→amber gradient w/ radial light, "Akwaaba Boutique Lodge" name, italic tagline, MiniStars 4.8 + 412 reviews, "Book Direct & Save 15%" white-pill CTA.
+    - Booking Widget: overlapping card (-mt-3) with 4 mini input tiles (check-in Apr 18 / check-out Apr 20 / 2 adults / Deluxe) + gradient "Search rooms" button.
+    - Room Gallery: 2-col grid of 4 featured ROOMS as colored gradient cards (orange/teal/rose/violet/amber/emerald gradients, type badge, capacity, ₵ rate).
+    - Experiences strip: horizontal scroll of 4 EXPERIENCES using each imageColor + emoji + name + price.
+    - Reviews carousel: horizontal scroll of 3 featured 4-5★ REVIEWS with avatar initials, platform badge, MiniStars, truncated text.
+    - Google Maps placeholder: teal grid background + amber mock roads + pulsing orange MapPin marker + location badge.
+    - Blog (when enabled): 2 mock AI-written story cards with gradient thumbnails.
+    - Footer: property name + "Powered by StayPilot AI" + Stripe/Flutterwave/Paystack chips (when payments enabled).
+    - WhatsApp floating button: fixed bottom-right, #25D366 green circle, amber ping badge.
+  * Section toggles (~40% width on lg): ScrollArea card listing all 10 WEBSITE_SECTIONS, each row with type-icon tile, name + uppercase type badge, description, Switch — toggling live-updates the preview + fires toast. "X/10 live" badge in header.
+  * Settings (3-col grid + 1 full-width): Domain card (staypilot.ai/akwaaba + SSL badge + Connect custom domain + Copy link), SEO keywords card (5 amber chips + "guest house Accra #3 ↑5" mini progress), Payment gateways card (Stripe/Flutterwave/Paystack/PaySwap as clickable rows w/ colored letter tiles + status pills, toggles local state), AI content generation card (full-width orange-tinted gradient: "AI auto-writes room descriptions & blog posts" + EN/FR/ZH + status + Switch). Publish site button repeated at bottom.
+
+- **marketplace.tsx** (`MarketplaceModule`):
+  * Hero (violet→purple gradient w/ orange radial): "Service Marketplace" + exact subtitle. Become a provider CTA.
+  * 4 StatCards computed from MARKETPLACE + installed state: Installed Services, Available Services, Avg Rating (4.7★, 2,115 reviews), Bookings via Marketplace (1,284 +14%).
+  * Category filter row (horizontal scroll, no-scrollbar): All / Cleaning / Laundry / Airport Transfers / Tour Guides / Restaurants / Photographers / Event Planners / Maintenance — each pill with icon + label + count badge; active pill uses brand orange→amber gradient.
+  * Service cards grid (1/2/3/4-col, AnimatePresence mode="popLayout"): each card has gradient header band (from svc.color) with emoji tile + category badge + emerald "Installed" badge if installed; body has name, provider, Stars rating + review count, description (line-clamp-2), separator, price + Install/Installed ✓ button. Install toast: "Installed — StayPilot will auto-orchestrate this service".
+  * AI orchestration card (orange-tinted, glow): exact requested narrative about checkout → SparkleClean Pro + Wash & Fold Express; airport pickup → AkwaabaTransfers; no manual coordination. Plus 4 orchestration rule rows (checkout / airport / maintenance / tour) each with colored icon tile, trigger label, action chips, orchestration note.
+  * Become a provider card (teal-tinted gradient): Briefcase tile, 3 benefits (1,200+ properties, auto-dispatched bookings, transparent pricing), Apply to list + Learn more buttons.
+
+- All three modules: 'use client', warm palette (orange #ea580c / teal #0d9488 / amber / rose / violet), NO indigo/blue (only WhatsApp green #25D366 isolated to the website preview floating button, exactly as booked), dark-mode safe via Tailwind tokens + dark: variants, glass/gradient accents, framer-motion entrances (initial opacity/y, staggered delays), responsive mobile-first (1-col collapse), touch-friendly (≥h-8 controls, 44px+ hit targets), sonner toast feedback on every interaction. Reused shared StatCard/SectionHeader/StatusPill + fmt helpers + shadcn Card/Button/Badge/Switch/Progress/Separator/ScrollArea/Tooltip + recharts BarChart + ~30 lucide icons.
+
+Stage Summary:
+- Three V2 modules fully implemented and lint/TS-clean (verified: `bunx eslint src/components/modules/{multi-property,website-builder,marketplace}.tsx` exit 0; `bunx tsc --noEmit` shows zero errors in any of the three new files; `bun run lint` on full project → exit 0)
+- Dev server restarted (was down after a prior session) and confirmed `GET / 200` cleanly with no compile errors — Preview Panel ready
+- Only the three task files modified; all protected files (registry, shared, data, data-v2, format, store, nav, app-shell, page, layout, globals.css, api/ai/route.ts, mission-control, dashboard) untouched
+- All three modules render the StayPilot AI luxury hospitality aesthetic with warm palette, dark-mode-safe tokens, responsive mobile-first grids, hover states, framer-motion entrances, sonner toast feedback on every interaction
+- The website-builder phone preview is the wow piece: realistic device frame with notch/status bar/browser chrome + conditionally-rendered hero/booking-widget/room-gallery/experiences/reviews/maps/blog/footer + floating WhatsApp button — looks like a genuine premium hospitality site
+- Agent work record written to /agent-ctx/V2-7-full-stack-developer.md
+
+---
+Task ID: V2-5
+Agent: full-stack-developer
+Task: Build three StayPilot AI V2 modules — Digital Twin (live business model), Knowledge Graph (relationship visualization), Predictive Revenue (forecasts with confidence intervals)
+
+Work Log:
+- Read worklog.md (V2-0 onward), data-v2.ts (DIGITAL_TWIN, GRAPH_NODES/EDGES, PREDICTIONS, REVENUE_FORECAST_SERIES), data.ts (ROOMS, RESERVATIONS, GUESTS, CAMPAIGNS, CHANNELS, REVIEWS, EXPERIENCES, CORPORATE, MAINTENANCE, AI_AGENTS, PROPERTY), format.ts, shared.tsx, registry.tsx, mission-control.tsx, insights.tsx to align on shared API surface & design tokens. Confirmed locked-file list (registry/shared/data/data-v2/format/store/nav/app-shell/page/layout/globals/api-ai/mission-control) — none modified.
+- All three modules `'use client'`, warm palette (orange #ea580c / teal #0d9488 / amber #b45309 / rose #be123c / violet #9333ea / emerald #15803d / cyan #0e7490 / gold #a16207 / slate #6b7280 / dark #1f2937), NO indigo/blue, dark-mode safe via Tailwind tokens + dark: variants, responsive mobile-first, framer-motion entrances, sonner toast feedback, reuse of shared SectionHeader/StatusPill + fmt helpers + shadcn ui.
+- digital-twin.tsx (`DigitalTwinModule`): SectionHeader with pulsing emerald "Live" indicator (animate-ping ring) + Re-sync button → 6-tile Live Metrics dashboard (occupancyNow / revenueToday / inquiriesToday / aiActionsToday / autoActionsToday / approvalsPending) with custom `AnimatedNumber` count-up (requestAnimationFrame cubic-ease) + colored icon tiles → Central `EntityOrbit`: property gradient tile at center with motion.span pulse rings, 10 category cards (Rooms/Bookings/Guests/Campaigns/Channels/Staff/Maintenance/Reviews/Experiences/Corporate) positioned by polar coordinates (cos/sin of angle), each with colored icon + live DIGITAL_TWIN count + SVG mini sparkline (deterministic shape from trend sign) + subtitle; hover scale 1.08; two concentric dashed orbit rings on radial-glow background; click → `CategorySidePanel` (ScrollArea of 5 real items from @/lib/data with StatusPill) OR empty state with 6 quick-pick chips → 9-tile Entity Inventory grid (rooms/activeBookings/totalGuests/vipGuests/activeCampaigns/connectedChannels/openIssues/cleaningTasks/activeAgents) → "What the AI sees right now" narrative card with Brain icon, synthesized paragraph from DIGITAL_TWIN state, 4-tile mini-summary (revenue/inquiries/AI actions/approvals) → Twin Sync Health card (6 source rows with lag times + synced/degraded badges, rebuild counter ticks every 30s).
+- knowledge-graph.tsx (`KnowledgeGraphModule`): SectionHeader + Database badge → 4-card Stats strip (Total Nodes=20 / Total Edges=20 / Relationship Types / Visible Now) → TypeFilterRow (11 toggle pills colored by type, live count per type) → Centerpiece SVG graph (`GraphSVG`): viewBox="0 0 100 100" preserveAspectRatio="xMidYMid meet" + CSS aspect-ratio 1/1 for full responsiveness; background grid pattern + radial orange glow; edges as gentle quadratic-Bezier curves (midpoint + perpendicular bend by edge length) with stroke width tied to weight, dimmed to 8% when focus active, highlighted to 95% orange with edgeGlow filter when connected to focus; nodes as circles r=size/3.6 filled by type color with white stroke, property has inner white dot, labels below node (font-size 2.3, bold when focused); SVG filters nodeGlow + edgeGlow (Gaussian blur merge); interactive hover/click sets focus, focus node + neighbors stay full opacity, others dim to 25%, halo rings around focused/selected; edge labels (text) appear on midpoints only for highlighted edges; zoom controls (0.7–1.6 scale via CSS transform) + Reset button → `NodeDetailPanel`: colored icon tile + label + type badge + close, 3-stat mini-grid (connections/total weight/rel types), ScrollArea of every connection with direction arrow + edge label + weight + other node StatusPill, click fires toast with readable sentence → `LegendCard` (2-col grid of all 11 types with color dots) shown when no node selected → `AllRelationshipsPanel`: searchable list of all 20 GRAPH_EDGES as readable sentences "David Kumar → stayed at → Akwaaba Boutique Lodge" with from/to labels in their type colors + weight badge, ScrollArea max-h-96.
+- predictions.tsx (`PredictionsModule`): SectionHeader + Brain badge → 4-card Stats row (Predicted Week Revenue ₵78.4K / Predicted Month Revenue ₵312K / Demand Spike Alert +23% / Expected Cancellations 6) with colored icon tiles + range/confidence subtitles → Confidence band chart (centerpiece): recharts ComposedChart over REVENUE_FORECAST_SERIES (31 points day -7→+23) with derived `band: [lower, upper]` tuple; Area dataKey="band" with orange gradient fill (28%→4% opacity, no stroke) for confidence band; Line dataKey="predicted" dashed teal (strokeDasharray "5 4"); Area dataKey="actual" solid orange with light gradient fill, connectNulls={false} so line stops at today boundary; ReferenceLine at today's date with "Today" label (teal dashed); custom RTooltip formatter (band → "Range: ₵68K – ₵89K", actual → "Actual: ₵12,400", predicted → "AI predicted: ₵12,400"); CartesianGrid horizontal-only, XAxis date labels fmtDate every ~4 days, YAxis fmtMoneyShort; legend swatches above; 3-tile summary below (7-day sum / 30-day sum / avg daily ± range) → Predictions grid (1/2/4-col): 8 cards from PREDICTIONS, each with metric name + trend pill (ArrowUpRight/ArrowDownRight signed %), horizon w/ Calendar icon, big predicted value colored by confidence tier (green ≥80 / amber 60-79 / rose <60), range line, animated confidence progress bar with % label, factor chips; Collapsible "AI reasoning" with Brain icon + chevron expands to bulleted per-factor narrative (27-entry `factorNarrative` map covering all factors) + orange insight strip with ±% of central estimate → Model accuracy card: teal gradient icon + 87% overall badge, big "Last 30 days · all predictions" Progress bar (87%), 5-row backtest breakdown (Revenue 7d 87% / Revenue 30d 79% / Occupancy 91% / Cancellations 72% / Demand spikes 84%) with gradient bars + "X/Y days" labels → AI Forecast Narrative card: violet gradient icon, synthesized paragraph weaving all 8 predictions + 2 action buttons (Re-run forecast / Apply AI recommendations toasts).
+- Cleaned unused imports: removed ScrollArea/Tooltip/StatusPill/fmtPct/AreaChart/AlertTriangle/TrendingUp/TrendingDown/BedDouble from predictions; StatCard/HOUSEKEEPING/fmtPct/relativeDate from digital-twin; defined local Sparkline + AnimatedNumber + Bot (now imported from lucide) helpers as needed. Final lint: zero warnings.
+
+Stage Summary:
+- Three V2 modules fully implemented and lint/TS-clean (verified: `bun run lint` exit 0 with no output; `bunx tsc --noEmit --skipLibCheck` shows zero errors in any of the three module files — only pre-existing errors in examples/, skills/, mission-control.tsx, data-v2.ts, data.ts which are out of scope / locked)
+- Dev server log: clean (Ready in 656ms, prior GET / 200); dev server is auto-managed by system per instructions — not restarted
+- All specified shared APIs consumed (DIGITAL_TWIN/GRAPH_NODES/GRAPH_EDGES/PREDICTIONS/REVENUE_FORECAST_SERIES from @/lib/data-v2; ROOMS/RESERVATIONS/GUESTS/CAMPAIGNS/CHANNELS/REVIEWS/EXPERIENCES/CORPORATE/MAINTENANCE/AI_AGENTS/PROPERTY from @/lib/data; fmtMoney/fmtMoneyShort/fmtDate from @/lib/format; SectionHeader/StatusPill from @/components/shared; shadcn Card/Button/Badge/Separator/ScrollArea/Tooltip/Progress/Switch/Collapsible; recharts Area/Line/ComposedChart/ResponsiveContainer/Tooltip/XAxis/YAxis/CartesianGrid/ReferenceLine; lucide-react; framer-motion; sonner)
+- Knowledge graph SVG is the "wow" centerpiece: 20 nodes + 20 curved edges, SVG glow filters, hover propagation to neighbors + connected edges, click-to-inspect side panel, type filters, zoom controls, searchable relationships list, legend mapping all 11 node types to specified colors (property=orange/guest=teal/company=rose/family=violet/booking=amber/campaign=emerald/room=gold/review=cyan/experience=orange-dark/referral=slate/staff=dark)
+- Confidence-band chart clearly shows band (shaded Area with tuple dataKey) + actual (solid orange Area, stops at today via connectNulls=false) vs predicted (dashed teal Line) + Today reference line + custom tooltip with range
+- Digital Twin orbit: 10 category cards positioned by polar coordinates around pulsing property center, each with sparkline + live count, click → real-items side panel from @/lib/data
+- Predictions grid: 8 cards with confidence-tier coloring (green/amber/rose), expandable AI reasoning with 27-entry per-factor narrative map, model-accuracy backtest card
+- Only the three task files modified; all protected files (registry, shared, data, data-v2, format, store, nav, app-shell, page, layout, globals.css, api/ai/route.ts, mission-control) untouched
+- Agent work record written to /agent-ctx/V2-5-full-stack-developer.md
+
+---
+Task ID: V2-4
+Agent: full-stack-developer
+Task: Upgrade TWO V2 modules for the autonomous transformation: agents.tsx → AI Workforce (autonomous team collaboration center with live cascades), insights.tsx → CEO Daily Brief (with approve/reject action queue).
+
+Work Log:
+- Read worklog.md (V1 foundation + V2 kickoff), data-v2.ts (CASCADES=3, BRIEF_ACTIONS=6, DIGITAL_TWIN.liveMetrics), data.ts (AI_AGENTS=10, INSIGHTS=6, PROPERTY), types.ts (AIAgent, Insight), format.ts (relativeDate, fmtMoney, initials), shared.tsx (StatCard/SectionHeader/StatusPill), api/ai/route.ts (modes: brief, agent-chat). Confirmed locked-files list (registry, shared, data, data-v2, format, store, nav, app-shell, page, layout, globals, api/ai, mission-control).
+
+**File 1: src/components/modules/agents.tsx (OVERWRITTEN, ~1060 lines, exports AgentsModule):**
+- 12-agent team: V1 AI_AGENTS (10) + 2 EXTRA_AGENTS (Kwesi Housekeeping Supervisor 🧹 #15803d, Esi Maintenance Manager 🔧 #c2410c) → TEAM array + AGENT_BY_ID lookup map.
+- Header: "AI Workforce — 12 specialized agents collaborating 24/7" + subtitle "They don't just answer questions. They detect problems, create tasks for each other, and execute autonomously." + "12 agents online" Cpu badge.
+- Explainer strip: rose→orange→amber gradient banner with Brain icon + StatusDot legend (Active/Working/Idle pulse dots).
+- 5 StatCards (lg:grid-cols-5): Total agents (12/brand), Active now (count/teal/+8%), Tasks today (47 from DIGITAL_TWIN.liveMetrics.aiActionsToday/gold/+14%), Approvals pending (4 from DIGITAL_TWIN.liveMetrics.approvalsPending/rose), Auto-actions today (31 from DIGITAL_TWIN.liveMetrics.autoActionsToday/violet).
+- Main grid lg:[1fr_360px]:
+  - Left: 12 AgentCards (sm:2 / xl:3 cols). Each: gradient emoji avatar tile (agent.color) with top accent bar + corner glow + pulsing status dot, name + StatusPill, role, lastAction (line-clamp-2), tasksCompleted + Chat button (border colored by agent.color). Framer-motion hover lift + staggered entrance.
+  - Right: MorningBrief card (Crown icon, POST /api/ai mode:brief, react-markdown render, 6-line shimmer skeleton, regenerate button) + ActivityFeed card (timeline mixing AI_AGENTS.lastAction + CASCADES.steps filtered to non-'—', sorted newest-first via parseMinutesAgo parser, top 14 items, colored dots per agent.color, violet "cascade" badge for cascade items, live pulse badge).
+- Live Collaboration Cascades (THE centerpiece, full-width section): Workflow icon + "Live Collaboration Cascades" + "3 running" pulse badge + status legend (done/active/pending). 3 CascadeFlow cards in lg:grid-cols-3:
+  - Trigger banner (orange→amber→rose gradient): Zap icon + "TRIGGER" label + "RUNNING" pulse badge + trigger text + "Started Xh ago".
+  - Steps area (px-4 py-4 relative): vertical gradient line (absolute left-[36px] from-orange-500/50 via-border to-emerald-500/50). CascadeStepNode per step: agent emoji avatar in colored gradient tile bordered by status color (emerald done / orange active / slate pending) + step number badge (top-left) + status icon dot (bottom-right: check/pulse/clock). Active steps get ring shadow. Step content: agent name · role + action + status pill + timestamp.
+  - Outcome banner (bottom, emerald→teal gradient, border-t): CheckCircle2 icon + "PROJECTED OUTCOME" + outcome text.
+- AgentChatDialog: full Dialog (max-w-2xl, max-h-88vh). Agent-colored header (emoji tile + name + StatusPill + role·property), description strip, scrollable messages (max-h-46vh). Per-agent history in Record<agentId, AgentMsg[]>. SUGGESTED_QUESTIONS map covers all 12 roles + default fallback. Typing indicator (3 bouncing dots). Send button colored by agent.color. POST /api/ai {mode:'agent-chat', agentRole:`${agent.role} at ${PROPERTY.name}`, message, history}. Reset button clears history.
+
+**File 2: src/components/modules/insights.tsx (OVERWRITTEN, ~635 lines, exports InsightsModule):**
+- Header: "Daily CEO Brief" + subtitle "Your AI General Manager's morning report. Approve, reject, or let it auto-run." + "auto-updated 4:30 AM" pulse badge.
+- BriefCard (HERO, auto-generates on mount via useEffect + didAuto ref): gradient orange→amber→teal banner with Brain icon + "Today's CEO Brief" + "Nana · General Manager AI" badge + "{AI_AGENTS.length} agents · 47 actions · 31 auto-executed" subtitle + Regenerate button. POST /api/ai {mode:'brief'}. 6-block shimmer skeleton while loading + "Nana is reading overnight activity across all agents…" pulse caption. ReactMarkdown render with custom h1/h2/h3/ul/ol components. Error state with retry. Generated-at timestamp footer. SECTIONS COVERED strip: 11 chips (Yesterday, Today's priorities, Revenue at risk, VIP arrivals, Guest issues, Maintenance risks, Empty rooms, Competitor activity, Marketing opportunities, Expected revenue, Recommended actions) each with emerald check icon.
+- ScoreStrip (4 small cards, lg:grid-cols-4): Occupancy forecast (parsed from INSIGHTS "Tomorrow" entry), Revenue at risk (₵6,400), Threats open (count critical+warning), Opportunities found (count success+info). Each: gradient ring blur + icon tile + label + value + sub.
+- ActionQueue (approve/reject centerpiece): Zap icon header + "Approve, reject, or let the AI auto-run." + 3 count chips (approved emerald / rejected rose / pending amber). 6 ActionCards in md:grid-cols-2 with AnimatePresence mode="popLayout". Each card:
+  - Left edge color bar (violet approve / amber review / slate info, or emerald/rose/slate when resolved).
+  - Type badge + resolved-status badge.
+  - Title, detail, impact pill (emerald TrendingUp), agent chip (emoji avatar + name + role).
+  - Buttons: approve & review types get Approve (emerald solid) + Reject (rose outline); info type gets Acknowledged (slate outline only).
+  - On resolve: setResolved state update, opacity-60 dim, status badge replaces buttons, sonner toast (Approve→"Approved — AI executing", Reject→"Rejected", Acknowledge→"Acknowledged").
+- ThreatsOpportunities (two-column from INSIGHTS by severity): left rose-tinted "Threats" card (critical+warning insights, mitigation action buttons); right emerald-tinted "Opportunities" card (success+info insights, pursue action buttons). ScrollArea max-h-96 with scroll-area-fancy.
+
+Stage Summary:
+- Both modules `'use client'`, production TypeScript, no test code, no build run. All locked files untouched.
+- `bun run lint` → exit 0, CLEAN across entire project. `bunx tsc --noEmit` filtered to my two files → 0 errors (14 pre-existing errors all in locked files: examples/, skills/, mission-control.tsx, data-v2.ts, data.ts).
+- agent-browser end-to-end verification:
+  * AgentsModule renders: heading + subtitle, 5 stats, 12-agent workforce grid, Live Activity feed with cascade items, Live Collaboration Cascades section with 3 TRIGGER banners + step flows + OUTCOME banners.
+  * InsightsModule renders: heading + subtitle, Nana GM AI badge, shimmer loading state for auto-brief, SECTIONS COVERED chip strip, 4-card score strip, Action Queue with 0/0/6 counts + 6 action cards (4 Approve/Reject + 2 Acknowledged buttons), Threats + Opportunities two-column.
+- Design: warm palette only (orange #ea580c, teal #0d9488, amber, rose, violet, emerald for done/success). NO indigo/blue. Dark-mode safe via Tailwind tokens + dark: variants. Glass/gradient accents sparingly on hero banners. Framer-motion staggered entrances + pulse dots + spring hover lift. Responsive mobile-first (1→2→3→5 col grids). Touch-friendly ≥44px hit targets. The cascade visualization is THE differentiator — vertical gradient line connecting trigger → numbered agent avatars (each with status ring + step number badge + status dot) → emerald outcome banner — looks like a live org executing. Approve/reject feels satisfying: colored edge bar, emerald solid Approve + rose outline Reject, immediate toast, opacity dim, status badge replaces buttons, count chips update live.
+- Work record saved to /agent-ctx/V2-4-full-stack-developer.md.
+
+---
+Task ID: V2-6
+Agent: full-stack-developer
+Task: Build four V2 StayPilot AI modules — Segmentation, Funnel, Experiments, Direct Booking Intelligence
+
+Work Log:
+- Read worklog + verified locked-file list (none of the 4 targets locked; did NOT modify registry, shared, data, data-v2, format, store, nav, app-shell, page, layout, globals.css, api/ai/route, mission-control).
+- Confirmed recharts convention: `stroke="currentColor" className="text-border"` (globals.css uses oklch tokens, not hsl — so `hsl(var(--border))` would not work).
+- Read `data-v2.ts`: SEGMENTS (11), FUNNEL_STAGES (8), EXPERIMENTS (3), OTA_CONVERSION_RECORDS (16, 6 converted), COMMISSION_SAVED_TIMELINE (6 months, Dec cumulative 67,500).
+
+- `src/components/modules/segmentation.tsx` (~360 lines, `SegmentationModule`):
+  * Header "Intelligent Segmentation" + subtitle + segment-count badge
+  * 4 StatCards: Total Segments (11), Guests Covered (131), Highest-LTV Segment (Luxury Guests ₵38.6K), Best Retention (83%)
+  * Segment Library grid (1/2/3/4 cols) of 11 SegmentCards: top accent stripe in segment.color, emoji tile, count+share, LTV badge in color, 3 metric tiles (Retention color-coded / Avg spend / Guests), Best offer + Recommended campaign, preferred-channel chips, "Launch campaign" button (color-styled, toast) + "View guests" outline button (toast)
+  * 2 comparison BarCharts (lg:2 cols): LTV by Segment + Retention Rate by Segment — horizontal bars colored per segment.color, LabelList right-aligned, dark-mode safe axes
+  * AI Insight card (gradient bg): derived live — top-opportunity headline (Digital Nomads: ₵22.1K LTV × 71% retention ÷ 9 guests = highest opportunity score) → "Run a '30-day nomad package' campaign" + Launch button. Plus 3 secondary insights: Highest-LTV (Luxury Guests), Best retention (Luxury Guests 83%), Deprioritize (Budget Guests 22% retention)
+  * Footer: re-classification info + "Re-run AI classification" ghost button (toast)
+
+- `src/components/modules/funnel.tsx` (~470 lines, `FunnelModule`):
+  * Header "Booking Funnel" + subtitle + 8-stage badge
+  * 4 StatCards derived: Overall Conversion 2.9% (142/4820), Biggest Drop-off (Booking Widget -3,580 @ 74.3%), Repeat Rate 37.5% (48/128), Referral Rate 12.7% (18/142)
+  * **FunnelVisualization (centerpiece)**: 8 horizontal bars stacked vertically, width ∝ count/maxCount. 8-stop gradient orange→teal: `['#ea580c','#f97316','#d97706','#ca8a04','#0e7490','#0d9488','#15803d','#047857']`. Each bar: colored icon tile + stage name on left, gradient fill with shadow in color, visitor count large white, revenue badge (Wallet icon) at conversion stages, conversion% + drop% on right (white text), ArrowDown connectors between stages, "% of top" right column on lg+. 4-tile legend strip at bottom (top/reservations/repeats/referrals with counts + values).
+  * RevenueAnalysisCard: for each stage with drop-off, computes recovered revenue if drop-off reduced by 10% (×overallConvRate ×avgBookingValue for early stages; ×avgRepeatValue/avgReferralValue for repeat/referral stages). Animated bars (emerald if >₵5K recovered, amber otherwise), total recoverable badge, "Generate optimization plan" button (toast)
+  * AiRecommendationsCard (gradient bg): 3 derived actions — (1) Booking widget 74% drop-off → simplify to 3 steps (+₵12.3K recovered), (2) WhatsApp converts 2× better than inquiry → promote WhatsApp CTA (+1.6 bookings/wk), (3) 62.5% of check-ins don't repeat → launch loyalty at checkout (+₵14.9K). Each with icon tile in action color, impact badge, action button (toast "AI agent assigned")
+  * StageTable: full breakdown — Stage (icon tile+name), Visitors, Conversion (teal), Drop-off (rose if ≥50% else amber), Lost, Value (emerald if >0)
+  * Footer: WhatsApp tracking note + avg booking value ₵1,186 + last sync 4m ago
+
+- `src/components/modules/experiments.tsx` (~610 lines, `ExperimentsModule`):
+  * Header "AI Experiments" + subtitle + "Create experiment" orange button
+  * 4 StatCards: Running (1), Completed (1), Avg Uplift (computed: winner conv ÷ avg others - 1, averaged — +X%), Auto-Rolled-Out Winners (1)
+  * 3 ExperimentCards stacked, each with header (gradient bg per status): FlaskConical icon, name, StatusPill, badges ("Rolled out ✓" for completed+winnerId; pulsing "Winning: X" live badge for running with leader), question, date range (relative), days run, total bookings+revenue chips, Confidence gauge (% + Progress bar, color-coded emerald/amber/orange by threshold)
+  * Body 5-col grid: left = "Conversion rate by variant" mini BarChart (winner cells in teal, dashed empty state for scheduled); right = VariantRows
+  * VariantRow: lettered avatar (A/B/C in variant color), name + Crown if winner, description, allocation %, 4 metric tiles (Bookings / Revenue / Profit emerald / Avg rating with Star), conversion-rate bar (gradient emerald→teal if winner, else variant color). Winner has emerald border + bg + crown badge ("Winner · Rolled out" / "Winning so far")
+  * Recommendation strip: emerald-bordered for completed ("Recommendation (executed)" + "Auto-rolled out on [date]" badge + "Re-apply winner" button RefreshCw); amber-bordered for running ("AI recommendation (live projection)" + "Projected winner: X" badge + "Roll out now" button Rocket)
+  * Scheduled state: dashed-border empty state with "Starts [date]" + "Start now" button
+  * **CreateExperimentDialog**: full shadcn Dialog — name Input, question Textarea, dynamic variant inputs (2-4, add/remove with lettered avatars in variant colors), live allocation preview. Submit validates → 700ms Loader2 spinner → toast.success "Experiment created, AI will allocate traffic automatically" + reset
+  * Footer: gradient explainer on multi-armed bandit + "View archive" button
+
+- `src/components/modules/direct-intel.tsx` (~440 lines, `DirectIntelModule`):
+  * Constants: DIRECT_SHARE_PCT=41, OTA_SHARE_PCT=59, OTA_COMMISSION_RATE=0.15, MONTHLY_REVENUE=312K, ANNUAL_REVENUE=3.7M
+  * Header "Direct Booking Intelligence" + subtitle + OTA share badge
+  * 4 StatCards derived: Commission Paid YTD (sum commissionPaid, rose), Projected Commission Saved (sum estimatedFutureSavings, teal), Direct Share 41% → goal 60% (brand), Avg Return Probability (avg, violet)
+  * **CommissionSavedDashboard (hero)**: gradient teal/emerald bg, PiggyBank icon header + "+287% vs Jul" badge. Big number hero card (emerald border): "₵67,500 saved this year by converting to direct" + counts + Launch conversion campaign button. ComposedChart: teal-gradient bars (monthly saved, LabelList showing ₵X.XK) + orange line (cumulative, white-bordered dots), dual Y-axes. Legend strip below.
+  * **OtaConversionTable** (16 rows): filter pill row (All / Pending 10 / Converted 6). Sorted by estimatedFutureSavings desc. Columns: Guest (initials avatar color-coded by status), Source (SourceBadge with locked SOURCE_COLORS — OTA brand colors for source identity only), Commission paid (rose), Bookings, Return prob (Progress + colored %), Potential LTV, Future savings (emerald), Status badge (Converted emerald / High priority orange / Pending muted). Converted rows tinted emerald, high-prob pending tinted amber.
+  * **AiStrategyCard** (gradient orange/amber): headline "Converting the remaining N high-probability OTA guests would save ₵X in future commission". Top 3 conversion targets list (animated): each with avatar initials, name, SourceBadge, return-prob badge, lifetime bookings + LTV + savings detail, "Convert" outline button (orange, toast "DIRECT15 coupon sent via WhatsApp"). Recommendation strip + "Convert all N" button (toast "Auto-conversion sequence enabled")
+  * **CostOfInactionCard** (gradient rose/orange): AlertTriangle header. Big scary number card (rose border): "Projected commission next year" ₵328K (annualCommissionIfFlat). 2-col: "Each 1% shift to direct saves ₵5,550/yr" (emerald) + "Goal: 60% direct by Q4 → +₵105K" (amber). Direct-share trajectory Progress (41%→60%). "Share full commission report with ownership" button (rose outline, toast)
+  * Footer: "Direct bookings deliver 2.4× the lifetime value of OTA bookings" + records update note
+
+- Cleanup: removed unused `RefreshIcon` helper in experiments.tsx; replaced `hsl(var(--border))` recharts strokes with project convention `stroke="currentColor" className="text-border"`; removed awkward `//` comment inside JSX Progress attributes in direct-intel.tsx.
+
+Verification:
+- `npx eslint src/components/modules/{segmentation,funnel,experiments,direct-intel}.tsx` → CLEAN (0 errors, 0 warnings)
+- `npx tsc --noEmit --skipLibCheck` → zero errors in any of the four new files (only pre-existing errors in locked files: mission-control.tsx, data-v2.ts, data.ts, plus examples/ and skills/ which are out of scope)
+- Dev server: GET / 200 continued after edits; Turbopack HMR recompiled successfully (dev.log shows ✓ Compiled multiple times, no errors)
+
+Stage Summary:
+- Four V2 modules fully implemented, lint-clean, type-clean (verified — zero errors in the four new files)
+- All shared APIs consumed as specified: SEGMENTS, FUNNEL_STAGES, EXPERIMENTS, OTA_CONVERSION_RECORDS, COMMISSION_SAVED_TIMELINE from @/lib/data-v2; GUESTS, PROPERTY, SOURCE_COLORS from @/lib/data; fmtMoney, fmtMoneyShort, fmtPct, relativeDate, initials from @/lib/format; StatCard, SectionHeader, StatusPill, SourceBadge from @/components/shared; shadcn Card, Button, Badge, Table, Progress, Dialog, Input, Textarea, Label, Separator, Tooltip; recharts BarChart, ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList; lucide-react icons; framer-motion; sonner toast
+- Design: warm palette throughout (orange/teal/amber/rose/violet/emerald-for-positive), NO indigo/blue as primary; OTA brand colors isolated to SourceBadge for source identity (per V1 convention). Dark-mode safe via Tailwind tokens + dark: variants. Responsive mobile-first (1→4 col grids). Touch-friendly (≥h-7 controls, 44px+ hit targets). Framer-motion entrances. Sonner toast feedback on every mutation.
+- Files MODIFIED (only these four): src/components/modules/{segmentation,funnel,experiments,direct-intel}.tsx. Did NOT touch any locked file (registry.tsx already lazy-imports these modules — they slot into the existing router automatically).
+- Work record saved to /agent-ctx/V2-6-full-stack-developer.md
+- TASK COMPLETE
+
+---
+Task ID: V2-8
+Agent: full-stack-developer
+Task: Upgrade Guests CRM module for StayPilot AI V2 — add Guest Journey + AI Memory tabs to the master-detail layout (overwrite `src/components/modules/guests.tsx` → `GuestsModule`)
+
+Work Log:
+- Read worklog (V1 + V2-0 context), existing guests.tsx (775-line V1), data-v2.ts (journeyForGuest/memoriesForGuest + JourneyStep/GuestMemory/JourneyStage types), types.ts (Guest/TimelineEntry), format.ts, store.ts (useApp), shared.tsx (StatCard/SectionHeader/SourceBadge/StatusPill/TierBadge/PriorityPill). Confirmed locked files untouched: registry, shared, data, data-v2, format, store, nav, app-shell, page, layout, globals.css, api/ai/route, mission-control. Confirmed registry.tsx lazy-imports `./guests` → `m.GuestsModule`.
+- Overwrote `src/components/modules/guests.tsx` (~1525 lines, `'use client'`):
+  * **Helpers/configs**: `flagEmoji(code)` (regional indicator symbols), `isOta()`, `STAGE_CONFIG` (10 stages→lucide icons), `STATUS_CONFIG` (complete=emerald/current=orange-pulse/upcoming=muted/lost=rose), `MEMORY_CATEGORIES` (6 categories→icon/color/bg), `MEMORY_CATEGORY_ORDER`, kept V1 TIMELINE_ICONS/SENTIMENT_COLORS/TIERS/SEGMENTS
+  * **Left panel (refined V1)**: `GuestListItem` (avatar+initials+avatarColor, name, country flag emoji, TierBadge, lifetimeSpend fmtMoneyShort, lastStay relativeDate), search-by-name + tier Select + segment Select, `max-h-[calc(100vh-12rem)] overflow-y-auto scroll-area-fancy`, calls `openGuest(id)` from useApp, mobile list↔detail toggle, auto-picks highest lifetimeSpend guest when none selected
+  * **Right panel — tabbed profile (Tabs: Overview | Journey | Memory | Timeline)**: sticky TabsList (grid-cols-4, bg-background/90 backdrop-blur), right panel in `lg:max-h-[calc(100vh-12rem)] lg:overflow-y-auto scroll-area-fancy`
+  * **Overview tab (refined V1)**: header card (avatar/name/tier/flag/language/last stay/repeat/OTA→convert amber pill or direct teal pill/SourceBadge), 5 StatCards (Lifetime Spend-brand/Total Stays-teal/Repeat Visits-gold/Loyalty Points-violet/Avg Rating-rose with Lucide icons), action buttons (Send WhatsApp/Add to Campaign/Book Direct/View Reservations→toasts), SpendChart (recharts BarChart gradient in avatarColor), 12-item info grid, segments & tags chips, AI enrichment banner (gradient + ai-pulse + AI-suggested tags with birthday-distance logic)
+  * **Journey tab (NEW V2, centerpiece)**: `journeyForGuest(guest.id)` → `JourneyMap` horizontal scrollable 10-stage map. Each node = size-12 icon circle (status-colored bg/border/text) + status badge (emerald Check=complete / rose X=lost / orange `animate-ping`=current) + label + date + value (emerald `+₵X` revenue gained) + "Revenue lost" rose tag for lost + note. Connectors colored by source status. Legend dots. Revenue summary chips (gained/lost). Framer-motion staggered entrance. Below: `JourneyInsights` card (violet→orange→amber gradient, Brain icon, ai-pulse) — `buildJourneyInsights()` computes 4-7 AI observations (OTA commission risk, experiences upsell lost, repeat rate, review advocacy, loyalty tier, referral potential); each row: colored icon (win/risk/opportunity) + text + PriorityPill + type + action button→toast.
+  * **Memory tab (NEW V2)**: `memoriesForGuest(guest.id)` → proactive-use banner (violet→orange→teal, Brain, ai-pulse: "pre-assigning Room 101, pre-notifying kitchen of allergies"), header with count + "Add memory" button, `AddMemoryDialog` (Dialog: category Select with colored icons + content Textarea + Cancel/Save → toast "Memory saved — AI will use it proactively" + reset + close, empty-guard), memories grouped by category (preference→sensitivity→behavior→occasion→relationship→history) each with icon header + count + separator + responsive 1/2/3-col grid of `MemoryCard`s (category-colored border + blur accent, icon tile, content, "AI-learned" violet badge if auto, footer "Used N×" + lastUsed). Empty state: "The AI is still learning about this guest" with Brain icon.
+  * **Timeline tab (kept V1)**: `timelineForGuest(guest.id)` → vertical timeline (per-type icon nodes, sentiment dots, SourceBadge, value chips, relative dates), StatusPill "Live" in header (emerald)
+- Shared APIs consumed (all from spec): GUESTS/RESERVATIONS/ROOMS/timelineForGuest/SOURCE_COLORS (@/lib/data), journeyForGuest/memoriesForGuest (@/lib/data-v2), fmtMoney/fmtMoneyShort/fmtDate/relativeDate/initials (@/lib/format), useApp (@/lib/store), StatCard/SectionHeader/SourceBadge/StatusPill/TierBadge/PriorityPill (@/components/shared), toast (sonner), shadcn ui (card/button/input/select/separator/avatar/tabs/dialog/tooltip/textarea + sonner), recharts (BarChart), lucide-react, framer-motion; types Guest/TimelineEntry/TimelineEntryType/BookingSource (@/lib/types) + JourneyStep/GuestMemory (@/lib/data-v2)
+- Design: warm luxury palette (orange #ea580c/teal #0d9488/amber/rose/violet), NO indigo/blue; dark-mode safe (Tailwind tokens + dark: variants); glass accents sparingly; Journey map visually stunning (connected nodes, status colors, revenue gained/lost highlights, animated pulse on current); Memory tab conveys "AI remembers and proactively uses"; responsive (list/detail toggle on mobile, grid-cols-4 tabs fit 360px, journey map scrolls horizontally, stat row 2/3/5, memory grid 1/2/3); touch-friendly (≥44px targets); hover states everywhere; framer-motion entrances; sonner toasts on all mutations
+
+Verification:
+- `bun run lint` → exit 0 (clean, 0 errors, 0 warnings) across entire project
+- Dev server compiled guests module successfully: `GET /?XTransformPort=3000&module=guests 200` (multiple times, no errors/warnings in dev.log)
+- Agent-browser confirmed: Guests CRM renders header ("Guests CRM" + "AI-enriched guest profiles · journey maps · AI memory"), "64 total guests · 9 VIP", guest list (avatars+initials, country flags 🇳🇬🇬🇭🇬🇧🇨🇮🇿🇦, TierBadges, ₵22.4K spend, last-stay dates), and 4-tab tablist (Overview[selected]/Journey/Memory/Timeline) with Overview tabpanel active (View Reservations button). Dev server later recycled due to 4GB sandbox memory pressure (known issue per Task 12) — not a code issue; module verified working before recycle.
+
+Stage Summary:
+- `src/components/modules/guests.tsx` fully overwritten (~1525 lines, `'use client'`, production TypeScript, no test code, no build run)
+- Two new V2 tabs (Journey centerpiece + AI Memory) added alongside refined V1 Overview + Timeline in a tabbed profile panel with sticky tablist
+- Journey map: 10-stage horizontal connected-node map with status colors (emerald complete / orange-pulse current / muted upcoming / rose lost), revenue gained/lost highlights, AI insights card with PriorityPills + action buttons
+- Memory tab: proactive-use banner, category-grouped memory cards with AI-learned badges + usage stats, Add-memory dialog (category select + textarea → toast), friendly empty state
+- All specified shared APIs consumed; warm palette NO indigo/blue; dark-mode safe; responsive mobile-first; touch-friendly; hover states; framer-motion; sonner toasts
+- Only `src/components/modules/guests.tsx` modified — all locked files untouched
+- Lint clean; dev server compiled & served module (200s); agent-browser confirmed UI with all 4 tabs + guest list
+- Work record written to /agent-ctx/V2-8-full-stack-developer.md

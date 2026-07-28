@@ -1,0 +1,777 @@
+     1→'use client'
+     2→
+     3→import * as React from 'react'
+     4→import { Card } from '@/components/ui/card'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Input } from '@/components/ui/input'
+     8→import {
+     9→  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+    10→} from '@/components/ui/select'
+    11→import { Separator } from '@/components/ui/separator'
+    12→import { ScrollArea } from '@/components/ui/scroll-area'
+    13→import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+    14→import {
+    15→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    16→} from '@/components/ui/tooltip'
+    17→import {
+    18→  Search, Calendar, MessageCircle, Mail, Phone, CreditCard, Star,
+    19→  AlertTriangle, Sparkles, Megaphone, Lightbulb, LogIn, LogOut,
+    20→  ArrowLeft, MapPin, Languages, Cake, Heart, Users, UtensilsCrossed,
+    21→  Gift, Clock, Bookmark, Zap, Send, PlusCircle, Globe, Repeat,
+    22→  Wallet, BedDouble, ChevronRight, BadgeCheck, PhoneCall, NotebookPen,
+    23→  type LucideIcon,
+    24→} from 'lucide-react'
+    25→import { motion, AnimatePresence } from 'framer-motion'
+    26→import {
+    27→  BarChart, Bar, ResponsiveContainer, XAxis, YAxis, CartesianGrid,
+    28→  Tooltip as RTooltip, Cell,
+    29→} from 'recharts'
+    30→import { toast } from 'sonner'
+    31→
+    32→import { GUESTS, RESERVATIONS, timelineForGuest, SOURCE_COLORS } from '@/lib/data'
+    33→import { fmtMoney, fmtMoneyShort, fmtDate, relativeDate, initials } from '@/lib/format'
+    34→import { useApp } from '@/lib/store'
+    35→import { SectionHeader, SourceBadge, TierBadge } from '@/components/shared'
+    36→import { Toaster as SonnerToaster } from '@/components/ui/sonner'
+    37→import { cn } from '@/lib/utils'
+    38→import type { Guest, TimelineEntry, TimelineEntryType, BookingSource } from '@/lib/types'
+    39→
+    40→// ----------------- helpers -----------------
+    41→
+    42→const OTAS: BookingSource[] = ['Airbnb', 'Booking.com', 'Expedia', 'Agoda', 'Vrbo']
+    43→const isOta = (s: BookingSource) => OTAS.includes(s)
+    44→
+    45→/** Convert a 2-letter ISO country code to a flag emoji via regional indicator symbols. */
+    46→function flagEmoji(code?: string): string {
+    47→  if (!code || code.length !== 2) return '🏳️'
+    48→  const cc = code.toUpperCase()
+    49→  if (!/^[A-Z]{2}$/.test(cc)) return '🏳️'
+    50→  return String.fromCodePoint(
+    51→    ...[...cc].map((c) => 0x1f1e6 + (c.charCodeAt(0) - 65)),
+    52→  )
+    53→}
+    54→
+    55→interface TimelineIconCfg { icon: LucideIcon; color: string; bg: string }
+    56→
+    57→const TIMELINE_ICONS: Record<TimelineEntryType, TimelineIconCfg> = {
+    58→  'Reservation':       { icon: Calendar,       color: '#ea580c', bg: 'rgba(234,88,12,0.14)' },
+    59→  'WhatsApp':          { icon: MessageCircle,  color: '#16a34a', bg: 'rgba(22,163,74,0.14)' },
+    60→  'Email':             { icon: Mail,           color: '#a16207', bg: 'rgba(161,98,7,0.14)' },
+    61→  'Phone Call':        { icon: Phone,          color: '#9333ea', bg: 'rgba(147,51,234,0.14)' },
+    62→  'Payment':           { icon: CreditCard,     color: '#0d9488', bg: 'rgba(13,148,136,0.14)' },
+    63→  'Review':            { icon: Star,           color: '#f59e0b', bg: 'rgba(245,158,11,0.14)' },
+    64→  'Complaint':         { icon: AlertTriangle,  color: '#be123c', bg: 'rgba(190,18,60,0.14)' },
+    65→  'Special Request':   { icon: Sparkles,       color: '#0e7490', bg: 'rgba(14,116,144,0.14)' },
+    66→  'Campaign':          { icon: Megaphone,      color: '#be123c', bg: 'rgba(190,18,60,0.14)' },
+    67→  'Recommendation':    { icon: Lightbulb,      color: '#b45309', bg: 'rgba(180,83,9,0.14)' },
+    68→  'Check-in':          { icon: LogIn,          color: '#15803d', bg: 'rgba(21,128,61,0.14)' },
+    69→  'Check-out':         { icon: LogOut,         color: '#a16207', bg: 'rgba(161,98,7,0.14)' },
+    70→}
+    71→
+    72→const SENTIMENT_COLORS: Record<NonNullable<TimelineEntry['sentiment']>, string> = {
+    73→  positive: '#10b981',
+    74→  neutral: '#94a3b8',
+    75→  negative: '#f43f5e',
+    76→}
+    77→
+    78→const TIERS = ['Bronze', 'Silver', 'Gold', 'VIP'] as const
+    79→const SEGMENTS = [
+    80→  'Corporate Traveler', 'Leisure', 'Family', 'International Tourist',
+    81→  'Weekend Traveler', 'Long-stay Guest', 'High Spender', 'Birthday', 'Anniversary',
+    82→] as const
+    83→
+    84→// ----------------- small subcomponents -----------------
+    85→
+    86→function StatBox({
+    87→  label, value, sub, accent = 'brand', icon: Icon,
+    88→}: {
+    89→  label: string
+    90→  value: string
+    91→  sub?: string
+    92→  accent?: 'brand' | 'teal' | 'gold' | 'rose' | 'violet'
+    93→  icon?: LucideIcon
+    94→}) {
+    95→  const accentMap: Record<string, string> = {
+    96→    brand: 'text-orange-600 dark:text-orange-400',
+    97→    teal: 'text-teal-600 dark:text-teal-400',
+    98→    gold: 'text-amber-600 dark:text-amber-400',
+    99→    rose: 'text-rose-600 dark:text-rose-400',
+   100→    violet: 'text-violet-600 dark:text-violet-400',
+   101→  }
+   102→  return (
+   103→    <div className="rounded-xl border border-border bg-card/60 p-3 transition-colors hover:bg-accent/30">
+   104→      <div className="flex items-center justify-between">
+   105→        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+   106→        {Icon && <Icon className={cn('size-3.5', accentMap[accent])} />}
+   107→      </div>
+   108→      <p className={cn('text-lg font-bold tracking-tight mt-1', accentMap[accent])}>{value}</p>
+   109→      {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
+   110→    </div>
+   111→  )
+   112→}
+   113→
+   114→function InfoItem({
+   115→  icon: Icon, label, value, accent = 'text-muted-foreground',
+   116→}: {
+   117→  icon: LucideIcon
+   118→  label: string
+   119→  value?: string | number | null
+   120→  accent?: string
+   121→}) {
+   122→  const display = value === undefined || value === null || value === '' ? '—' : String(value)
+   123→  return (
+   124→    <div className="flex items-start gap-2.5 rounded-lg border border-border/60 bg-card/40 p-2.5">
+   125→      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-accent/40 text-muted-foreground">
+   126→        <Icon className="size-3.5" />
+   127→      </div>
+   128→      <div className="min-w-0 flex-1">
+   129→        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+   130→        <p className={cn('text-xs font-medium truncate', accent)} title={display}>{display}</p>
+   131→      </div>
+   132→    </div>
+   133→  )
+   134→}
+   135→
+   136→function Chip({ children, tone = 'default' }: { children: React.ReactNode; tone?: 'default' | 'brand' | 'teal' | 'gold' | 'rose' | 'violet' }) {
+   137→  const map: Record<string, string> = {
+   138→    default: 'bg-muted/60 text-foreground/80 border-border',
+   139→    brand: 'bg-orange-500/12 text-orange-700 dark:text-orange-300 border-orange-500/25',
+   140→    teal: 'bg-teal-500/12 text-teal-700 dark:text-teal-300 border-teal-500/25',
+   141→    gold: 'bg-amber-500/12 text-amber-700 dark:text-amber-300 border-amber-500/25',
+   142→    rose: 'bg-rose-500/12 text-rose-700 dark:text-rose-300 border-rose-500/25',
+   143→    violet: 'bg-violet-500/12 text-violet-700 dark:text-violet-300 border-violet-500/25',
+   144→  }
+   145→  return (
+   146→    <span className={cn('inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium', map[tone])}>
+   147→      {children}
+   148→    </span>
+   149→  )
+   150→}
+   151→
+   152→// ----------------- guest list item -----------------
+   153→
+   154→function GuestListItem({
+   155→  guest, selected, onSelect,
+   156→}: {
+   157→  guest: Guest
+   158→  selected: boolean
+   159→  onSelect: () => void
+   160→}) {
+   161→  return (
+   162→    <button
+   163→      onClick={onSelect}
+   164→      className={cn(
+   165→        'group relative flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-all',
+   166→        'hover:bg-accent/50 hover:shadow-sm',
+   167→        selected
+   168→          ? 'border-orange-500/40 bg-orange-500/5 shadow-sm ring-1 ring-orange-500/20'
+   169→          : 'border-border',
+   170→      )}
+   171→    >
+   172→      {selected && (
+   173→        <span className="absolute left-0 top-1/2 -translate-y-1/2 h-7 w-1 rounded-r-full bg-gradient-to-b from-orange-500 to-amber-500" />
+   174→      )}
+   175→      <Avatar className="size-10 shrink-0 border border-border/50">
+   176→        <AvatarFallback
+   177→          className="font-semibold"
+   178→          style={{ backgroundColor: guest.avatarColor + '22', color: guest.avatarColor }}
+   179→        >
+   180→          {initials(guest.name)}
+   181→        </AvatarFallback>
+   182→      </Avatar>
+   183→      <div className="min-w-0 flex-1">
+   184→        <div className="flex items-center justify-between gap-2">
+   185→          <p className="truncate text-sm font-semibold">{guest.name}</p>
+   186→          <span className="text-base leading-none shrink-0" title={guest.country}>
+   187→            {flagEmoji(guest.countryCode)}
+   188→          </span>
+   189→        </div>
+   190→        <div className="mt-1 flex items-center justify-between gap-2">
+   191→          <TierBadge tier={guest.loyaltyTier} />
+   192→          <span className="text-xs font-semibold text-foreground/80">
+   193→            {fmtMoneyShort(guest.lifetimeSpend)}
+   194→          </span>
+   195→        </div>
+   196→        <p className="mt-0.5 text-[10px] text-muted-foreground">
+   197→          Last stay {guest.lastStay ? relativeDate(guest.lastStay) : '—'}
+   198→        </p>
+   199→      </div>
+   200→    </button>
+   201→  )
+   202→}
+   203→
+   204→// ----------------- spend chart -----------------
+   205→
+   206→function SpendChart({ guestId, accent }: { guestId: string; accent: string }) {
+   207→  const data = React.useMemo(() => {
+   208→    return RESERVATIONS
+   209→      .filter((r) => r.guestId === guestId)
+   210→      .sort((a, b) => a.checkIn.localeCompare(b.checkIn))
+   211→      .map((r, i) => ({
+   212→        name: `#${i + 1}`,
+   213→        value: r.grossRevenue,
+   214→        date: r.checkIn,
+   215→        source: r.source,
+   216→      }))
+   217→  }, [guestId])
+   218→
+   219→  if (data.length === 0) {
+   220→    return (
+   221→      <div className="flex h-40 items-center justify-center text-xs text-muted-foreground">
+   222→        No reservation history yet
+   223→      </div>
+   224→    )
+   225→  }
+   226→
+   227→  return (
+   228→    <div className="h-44">
+   229→      <ResponsiveContainer width="100%" height="100%">
+   230→        <BarChart data={data} margin={{ top: 6, right: 4, left: -18, bottom: 0 }}>
+   231→          <defs>
+   232→            <linearGradient id="spendGrad" x1="0" y1="0" x2="0" y2="1">
+   233→              <stop offset="0%" stopColor={accent} stopOpacity={0.95} />
+   234→              <stop offset="100%" stopColor={accent} stopOpacity={0.55} />
+   235→            </linearGradient>
+   236→          </defs>
+   237→          <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" vertical={false} />
+   238→          <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="currentColor" className="text-muted-foreground" tickLine={false} axisLine={false} />
+   239→          <YAxis
+   240→            tick={{ fontSize: 10 }}
+   241→            stroke="currentColor"
+   242→            className="text-muted-foreground"
+   243→            tickLine={false}
+   244→            axisLine={false}
+   245→            width={48}
+   246→            tickFormatter={(v: number) => fmtMoneyShort(v)}
+   247→          />
+   248→          <RTooltip
+   249→            cursor={{ fill: 'rgba(234,88,12,0.06)' }}
+   250→            contentStyle={{ background: 'var(--popover)', border: '1px solid var(--border)', borderRadius: 12, fontSize: 12 }}
+   251→            formatter={(v: number) => [fmtMoney(v), 'Spend']}
+   252→            labelFormatter={(_, p) => p?.[0]?.payload?.date ? fmtDate(p[0].payload.date) : ''}
+   253→          />
+   254→          <Bar dataKey="value" radius={[6, 6, 0, 0]} fill="url(#spendGrad)" />
+   255→        </BarChart>
+   256→      </ResponsiveContainer>
+   257→    </div>
+   258→  )
+   259→}
+   260→
+   261→// ----------------- timeline -----------------
+   262→
+   263→function Timeline({ entries }: { entries: TimelineEntry[] }) {
+   264→  if (entries.length === 0) {
+   265→    return (
+   266→      <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+   267→        No timeline activity yet
+   268→      </div>
+   269→    )
+   270→  }
+   271→
+   272→  return (
+   273→    <div className="relative pl-9">
+   274→      {/* vertical line */}
+   275→      <div className="absolute left-[18px] top-3 bottom-3 w-px bg-gradient-to-b from-orange-500/50 via-border to-transparent" />
+   276→      <div className="space-y-3">
+   277→        <AnimatePresence initial={false}>
+   278→          {entries.map((entry, i) => {
+   279→            const cfg = TIMELINE_ICONS[entry.type] ?? TIMELINE_ICONS['Reservation']
+   280→            const Icon = cfg.icon
+   281→            const sentimentColor = entry.sentiment ? SENTIMENT_COLORS[entry.sentiment] : undefined
+   282→            return (
+   283→              <motion.div
+   284→                key={entry.id}
+   285→                initial={{ opacity: 0, y: 8 }}
+   286→                animate={{ opacity: 1, y: 0 }}
+   287→                transition={{ duration: 0.25, delay: Math.min(i * 0.03, 0.4) }}
+   288→                className="relative"
+   289→              >
+   290→                {/* node */}
+   291→                <div
+   292→                  className="absolute -left-9 top-2.5 flex size-7 items-center justify-center rounded-full border-2 border-background shadow-sm"
+   293→                  style={{ backgroundColor: cfg.bg, color: cfg.color }}
+   294→                >
+   295→                  <Icon className="size-3.5" />
+   296→                  {sentimentColor && (
+   297→                    <span
+   298→                      className="absolute -right-0.5 -bottom-0.5 size-2.5 rounded-full border border-background"
+   299→                      style={{ backgroundColor: sentimentColor }}
+   300→                    />
+   301→                  )}
+   302→                </div>
+   303→                {/* card */}
+   304→                <Card className="p-3 transition-shadow hover:shadow-md">
+   305→                  <div className="flex items-start justify-between gap-2">
+   306→                    <div className="min-w-0 flex-1">
+   307→                      <div className="flex items-center gap-2">
+   308→                        <p className="text-sm font-semibold leading-tight">{entry.title}</p>
+   309→                        <span className="shrink-0 rounded-full bg-muted/60 px-1.5 py-0.5 text-[9px] font-medium uppercase tracking-wide text-muted-foreground">
+   310→                          {entry.type}
+   311→                        </span>
+   312→                      </div>
+   313→                      {entry.description && (
+   314→                        <p className="mt-1 text-xs text-muted-foreground leading-snug">{entry.description}</p>
+   315→                      )}
+   316→                    </div>
+   317→                    <span className="shrink-0 whitespace-nowrap text-[10px] font-medium text-muted-foreground">
+   318→                      {relativeDate(entry.date)}
+   319→                    </span>
+   320→                  </div>
+   321→                  <div className="mt-2 flex flex-wrap items-center gap-2">
+   322→                    {entry.channel && (
+   323→                      <SourceBadge
+   324→                        source={entry.channel}
+   325→                        color={SOURCE_COLORS[entry.channel as BookingSource] ?? '#6b7280'}
+   326→                      />
+   327→                    )}
+   328→                    {entry.sentiment && (
+   329→                      <span
+   330→                        className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium"
+   331→                        style={{
+   332→                          backgroundColor: sentimentColor + '1f',
+   333→                          color: sentimentColor,
+   334→                        }}
+   335→                      >
+   336→                        <span className="size-1.5 rounded-full" style={{ backgroundColor: sentimentColor }} />
+   337→                        {entry.sentiment}
+   338→                      </span>
+   339→                    )}
+   340→                    {typeof entry.value === 'number' && entry.value > 0 && (
+   341→                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/12 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+   342→                        <Wallet className="size-3" /> {fmtMoney(entry.value)}
+   343→                      </span>
+   344→                    )}
+   345→                  </div>
+   346→                </Card>
+   347→              </motion.div>
+   348→            )
+   349→          })}
+   350→        </AnimatePresence>
+   351→      </div>
+   352→    </div>
+   353→  )
+   354→}
+   355→
+   356→// ----------------- profile panel -----------------
+   357→
+   358→function GuestProfile({ guest, onBack }: { guest: Guest; onBack: () => void }) {
+   359→  const timeline = React.useMemo(() => timelineForGuest(guest.id), [guest.id])
+   360→  const ota = isOta(guest.bookingSource)
+   361→  const reservations = React.useMemo(
+   362→    () => RESERVATIONS.filter((r) => r.guestId === guest.id),
+   363→    [guest.id],
+   364→  )
+   365→
+   366→  // AI-suggested auto tags based on guest signals
+   367→  const aiSuggestedTags = React.useMemo(() => {
+   368→    const tags: string[] = []
+   369→    if (ota) tags.push('OTA conversion opportunity')
+   370→    if (guest.loyaltyTier === 'VIP' || guest.loyaltyTier === 'Gold') tags.push('High-value retention')
+   371→    if (guest.lastStay) {
+   372→      const days = Math.round((Date.now() - new Date(guest.lastStay + 'T00:00:00').getTime()) / 86400000)
+   373→      if (days > 180) tags.push('Lapsed — win-back')
+   374→      else if (days < 60) tags.push('Recent guest')
+   375→    }
+   376→    if (guest.travelReason === 'Business') tags.push('Business traveler')
+   377→    if (guest.countryCode !== 'GH') tags.push('International outreach')
+   378→    if (guest.birthday) {
+   379→      const [m, d] = guest.birthday.split('-')
+   380→      const today = new Date()
+   381→      const bm = Number(m), bd = Number(d)
+   382→      const next = new Date(today.getFullYear(), bm - 1, bd)
+   383→      if (next < today) next.setFullYear(today.getFullYear() + 1)
+   384→      const daysToBday = Math.round((next.getTime() - today.getTime()) / 86400000)
+   385→      if (daysToBday <= 45) tags.push('Birthday soon 🎂')
+   386→    }
+   387→    if (guest.avgRatingGiven && guest.avgRatingGiven >= 4.5) tags.push('Brand advocate')
+   388→    return tags.slice(0, 4)
+   389→  }, [guest, ota])
+   390→
+   391→  const doToast = (label: string) => toast.success(label, {
+   392→    description: `${guest.name} · ${fmtDate(new Date().toISOString().slice(0, 10))}`,
+   393→  })
+   394→
+   395→  return (
+   396→    <div className="space-y-4">
+   397→      {/* Mobile back button */}
+   398→      <Button
+   399→        variant="outline"
+   400→        size="sm"
+   401→        onClick={onBack}
+   402→        className="lg:hidden"
+   403→      >
+   404→        <ArrowLeft className="size-4" /> Back to list
+   405→      </Button>
+   406→
+   407→      {/* Header */}
+   408→      <Card className="relative overflow-hidden p-5">
+   409→        <div className="absolute -right-10 -top-10 size-40 rounded-full bg-gradient-to-br from-orange-500/15 to-amber-500/5 blur-3xl" />
+   410→        <div className="absolute -left-8 -bottom-12 size-32 rounded-full bg-gradient-to-br from-teal-500/10 to-transparent blur-3xl" />
+   411→        <div className="relative flex items-start gap-4">
+   412→          <Avatar className="size-16 shrink-0 border-2 border-background shadow-md">
+   413→            <AvatarFallback
+   414→              className="text-xl font-bold text-white"
+   415→              style={{ backgroundColor: guest.avatarColor }}
+   416→            >
+   417→              {initials(guest.name)}
+   418→            </AvatarFallback>
+   419→          </Avatar>
+   420→          <div className="min-w-0 flex-1">
+   421→            <div className="flex flex-wrap items-center gap-2">
+   422→              <h2 className="text-xl font-bold tracking-tight">{guest.name}</h2>
+   423→              <TierBadge tier={guest.loyaltyTier} />
+   424→            </div>
+   425→            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+   426→              <span className="inline-flex items-center gap-1">
+   427→                <span className="text-base leading-none">{flagEmoji(guest.countryCode)}</span>
+   428→                <span>{guest.country}</span>
+   429→              </span>
+   430→              <span className="inline-flex items-center gap-1">
+   431→                <Languages className="size-3" /> {guest.language}
+   432→              </span>
+   433→              <span className="inline-flex items-center gap-1">
+   434→                <Clock className="size-3" /> Last stay {guest.lastStay ? relativeDate(guest.lastStay) : '—'}
+   435→              </span>
+   436→              <span className="inline-flex items-center gap-1">
+   437→                <Repeat className="size-3" /> {guest.repeatVisits} repeat visits
+   438→              </span>
+   439→            </div>
+   440→            <div className="mt-2 flex flex-wrap items-center gap-2">
+   441→              {ota ? (
+   442→                <TooltipProvider>
+   443→                  <Tooltip>
+   444→                    <TooltipTrigger asChild>
+   445→                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+   446→                        <AlertTriangle className="size-3" /> OTA — convert to direct
+   447→                      </span>
+   448→                    </TooltipTrigger>
+   449→                    <TooltipContent>
+   450→                      Booked via {guest.bookingSource}. Send a direct-booking incentive.
+   451→                    </TooltipContent>
+   452→                  </Tooltip>
+   453→                </TooltipProvider>
+   454→              ) : (
+   455→                <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-500/15 px-2.5 py-1 text-xs font-medium text-teal-600 dark:text-teal-400">
+   456→                  <BadgeCheck className="size-3" /> Direct guest
+   457→                </span>
+   458→              )}
+   459→              <SourceBadge
+   460→                source={guest.bookingSource}
+   461→                color={SOURCE_COLORS[guest.bookingSource] ?? '#6b7280'}
+   462→              />
+   463→            </div>
+   464→          </div>
+   465→        </div>
+   466→
+   467→        {/* Action buttons */}
+   468→        <div className="relative mt-4 flex flex-wrap gap-2">
+   469→          <Button size="sm" onClick={() => doToast('WhatsApp drafted to guest')}>
+   470→            <MessageCircle className="size-3.5" /> Send WhatsApp
+   471→          </Button>
+   472→          <Button size="sm" variant="outline" onClick={() => doToast('Guest added to campaign')}>
+   473→            <PlusCircle className="size-3.5" /> Add to Campaign
+   474→          </Button>
+   475→          <Button size="sm" variant="outline" onClick={() => doToast('Direct-booking link sent')}>
+   476→            <Zap className="size-3.5" /> Book Direct
+   477→          </Button>
+   478→          <Button size="sm" variant="outline" onClick={() => doToast(`Opened ${reservations.length} reservations`)}>
+   479→            <Calendar className="size-3.5" /> View Reservations
+   480→          </Button>
+   481→        </div>
+   482→      </Card>
+   483→
+   484→      {/* Stat row */}
+   485→      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+   486→        <StatBox label="Lifetime Spend" value={fmtMoneyShort(guest.lifetimeSpend)} accent="brand" icon={Wallet} />
+   487→        <StatBox label="Total Stays" value={String(guest.totalStays)} accent="teal" icon={Calendar} />
+   488→        <StatBox label="Repeat Visits" value={String(guest.repeatVisits)} accent="gold" icon={Repeat} />
+   489→        <StatBox label="Loyalty Points" value={guest.loyaltyPoints.toLocaleString()} accent="violet" icon={Gift} />
+   490→        <StatBox
+   491→          label="Avg Rating"
+   492→          value={guest.avgRatingGiven ? `${guest.avgRatingGiven}★` : '—'}
+   493→          accent="rose"
+   494→          icon={Star}
+   495→        />
+   496→      </div>
+   497→
+   498→      {/* Spend chart */}
+   499→      <Card className="p-5">
+   500→        <div className="mb-2 flex items-center justify-between">
+   501→          <div>
+   502→            <h3 className="text-sm font-semibold">Spend per Stay</h3>
+   503→            <p className="text-xs text-muted-foreground">
+   504→              {reservations.length} reservations · {fmtMoney(guest.lifetimeSpend)} lifetime
+   505→            </p>
+   506→          </div>
+   507→          <span className="inline-flex items-center gap-1 rounded-full bg-orange-500/10 px-2 py-0.5 text-[10px] font-medium text-orange-600 dark:text-orange-400">
+   508→            <Sparkles className="size-3" /> AI insight
+   509→          </span>
+   510→        </div>
+   511→        <SpendChart guestId={guest.id} accent={guest.avatarColor} />
+   512→      </Card>
+   513→
+   514→      {/* Info grid */}
+   515→      <Card className="p-5">
+   516→        <h3 className="mb-3 text-sm font-semibold">Profile Details</h3>
+   517→        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+   518→          <InfoItem icon={Phone} label="Phone" value={guest.phone} />
+   519→          <InfoItem icon={Mail} label="Email" value={guest.email} />
+   520→          <InfoItem icon={BedDouble} label="Favorite Room" value={guest.favoriteRoom} />
+   521→          <InfoItem icon={Globe} label="Travel Reason" value={guest.travelReason} />
+   522→          <InfoItem icon={UtensilsCrossed} label="Dietary Preferences" value={guest.dietaryPreferences} />
+   523→          <InfoItem icon={Cake} label="Birthday" value={guest.birthday ? `${guest.birthday} (MM-DD)` : undefined} />
+   524→          <InfoItem icon={Heart} label="Anniversary" value={guest.anniversary ? `${guest.anniversary} (MM-DD)` : undefined} />
+   525→          <InfoItem icon={Users} label="Family Members" value={guest.familyMembers ? String(guest.familyMembers) : undefined} />
+   526→          <InfoItem icon={Bookmark} label="Referral Source" value={guest.referralSource} />
+   527→          <InfoItem icon={NotebookPen} label="Special Requests" value={guest.specialRequests} />
+   528→          <InfoItem icon={Clock} label="First Seen" value={fmtDate(guest.firstSeen)} />
+   529→          <InfoItem icon={Calendar} label="Last Stay" value={guest.lastStay ? fmtDate(guest.lastStay) : undefined} />
+   530→        </div>
+   531→      </Card>
+   532→
+   533→      {/* Segments & Tags */}
+   534→      <Card className="p-5">
+   535→        <h3 className="mb-3 text-sm font-semibold">Segments &amp; Tags</h3>
+   536→        <div className="space-y-3">
+   537→          <div>
+   538→            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Segments</p>
+   539→            <div className="flex flex-wrap gap-1.5">
+   540→              {guest.segments.length > 0 ? (
+   541→                guest.segments.map((s) => (
+   542→                  <Chip key={s} tone="brand">
+   543→                    <Users className="size-3" /> {s}
+   544→                  </Chip>
+   545→                ))
+   546→              ) : (
+   547→                <span className="text-xs text-muted-foreground">No segments assigned</span>
+   548→              )}
+   549→            </div>
+   550→          </div>
+   551→          <Separator />
+   552→          <div>
+   553→            <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">Tags</p>
+   554→            <div className="flex flex-wrap gap-1.5">
+   555→              {guest.tags.length > 0 ? (
+   556→                guest.tags.map((t) => (
+   557→                  <Chip key={t} tone="teal">
+   558→                    <Bookmark className="size-3" /> {t}
+   559→                  </Chip>
+   560→                ))
+   561→              ) : (
+   562→                <span className="text-xs text-muted-foreground">No tags yet</span>
+   563→              )}
+   564→            </div>
+   565→          </div>
+   566→        </div>
+   567→      </Card>
+   568→
+   569→      {/* AI Enrichment banner */}
+   570→      <Card className="relative overflow-hidden border-orange-500/20 bg-gradient-to-br from-orange-500/8 via-amber-500/4 to-teal-500/8 p-4">
+   571→        <div className="absolute right-3 top-3 size-2 rounded-full bg-emerald-500 ai-pulse" />
+   572→        <div className="flex items-start gap-3">
+   573→          <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-sm">
+   574→            <Sparkles className="size-4" />
+   575→          </div>
+   576→          <div className="flex-1 min-w-0">
+   577→            <p className="text-sm font-semibold">AI continuously enriches this profile</p>
+   578→            <p className="text-xs text-muted-foreground">
+   579→              Last enriched 2h ago · Yaw (Guest Success Manager) is monitoring signals
+   580→            </p>
+   581→            <div className="mt-2 flex flex-wrap gap-1.5">
+   582→              {aiSuggestedTags.map((t) => (
+   583→                <span
+   584→                  key={t}
+   585→                  className="inline-flex items-center gap-1 rounded-full border border-orange-500/25 bg-orange-500/8 px-2 py-0.5 text-[11px] font-medium text-orange-700 dark:text-orange-300"
+   586→                >
+   587→                  <Lightbulb className="size-3" /> {t}
+   588→                </span>
+   589→              ))}
+   590→            </div>
+   591→          </div>
+   592→        </div>
+   593→      </Card>
+   594→
+   595→      {/* Timeline (centerpiece) */}
+   596→      <Card className="p-5">
+   597→        <div className="mb-4 flex items-center justify-between">
+   598→          <div>
+   599→            <h3 className="text-sm font-semibold">Customer Timeline</h3>
+   600→            <p className="text-xs text-muted-foreground">
+   601→              {timeline.length} interactions across all channels · newest first
+   602→            </p>
+   603→          </div>
+   604→          <span className="inline-flex items-center gap-1 rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] font-medium text-teal-600 dark:text-teal-400">
+   605→            <Clock className="size-3" /> Live
+   606→          </span>
+   607→        </div>
+   608→        <Timeline entries={timeline} />
+   609→      </Card>
+   610→    </div>
+   611→  )
+   612→}
+   613→
+   614→// ----------------- main module -----------------
+   615→
+   616→export function GuestsModule() {
+   617→  const { selectedGuestId, openGuest } = useApp()
+   618→  const [search, setSearch] = React.useState('')
+   619→  const [tierFilter, setTierFilter] = React.useState<string>('all')
+   620→  const [segmentFilter, setSegmentFilter] = React.useState<string>('all')
+   621→  const [mobileView, setMobileView] = React.useState<'list' | 'detail'>(
+   622→    selectedGuestId ? 'detail' : 'list',
+   623→  )
+   624→
+   625→  // Default to highest lifetimeSpend guest when nothing selected (desktop auto-pick)
+   626→  const defaultGuestId = React.useMemo(
+   627→    () => [...GUESTS].sort((a, b) => b.lifetimeSpend - a.lifetimeSpend)[0]?.id,
+   628→    [],
+   629→  )
+   630→  const effectiveId = selectedGuestId ?? defaultGuestId
+   631→
+   632→  // If a guest was opened externally (e.g. from dashboard), switch mobile to detail
+   633→  React.useEffect(() => {
+   634→    if (selectedGuestId) setMobileView('detail')
+   635→  }, [selectedGuestId])
+   636→
+   637→  const filtered = React.useMemo(() => {
+   638→    const q = search.trim().toLowerCase()
+   639→    return GUESTS.filter((g) => {
+   640→      if (q && !g.name.toLowerCase().includes(q)) return false
+   641→      if (tierFilter !== 'all' && g.loyaltyTier !== tierFilter) return false
+   642→      if (segmentFilter !== 'all' && !g.segments.includes(segmentFilter as Guest['segments'][number])) return false
+   643→      return true
+   644→    }).sort((a, b) => b.lifetimeSpend - a.lifetimeSpend)
+   645→  }, [search, tierFilter, segmentFilter])
+   646→
+   647→  const selectedGuest = React.useMemo(
+   648→    () => GUESTS.find((g) => g.id === effectiveId) ?? null,
+   649→    [effectiveId],
+   650→  )
+   651→
+   652→  const handleSelect = (id: string) => {
+   653→    openGuest(id)
+   654→    setMobileView('detail')
+   655→  }
+   656→
+   657→  const handleBack = () => setMobileView('list')
+   658→
+   659→  return (
+   660→    <div className="space-y-4">
+   661→      <SonnerToaster position="top-right" richColors closeButton />
+   662→      <SectionHeader
+   663→        title="Guests CRM"
+   664→        description="AI-enriched guest profiles with full interaction timeline"
+   665→        action={
+   666→          <div className="hidden items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs text-muted-foreground sm:inline-flex">
+   667→            <Users className="size-3.5 text-orange-500" />
+   668→            <span className="font-medium text-foreground">{GUESTS.length}</span> total guests
+   669→            <span className="text-border">·</span>
+   670→            <span className="font-medium text-foreground">{GUESTS.filter((g) => g.loyaltyTier === 'VIP').length}</span> VIP
+   671→          </div>
+   672→        }
+   673→      />
+   674→
+   675→      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[360px_1fr]">
+   676→        {/* LEFT: guest list */}
+   677→        <Card
+   678→          className={cn(
+   679→            'flex flex-col p-3 lg:max-h-[calc(100vh-12rem)]',
+   680→            mobileView === 'detail' ? 'hidden lg:flex' : 'flex',
+   681→          )}
+   682→        >
+   683→          {/* filters */}
+   684→          <div className="space-y-2 pb-3">
+   685→            <div className="relative">
+   686→              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+   687→              <Input
+   688→                value={search}
+   689→                onChange={(e) => setSearch(e.target.value)}
+   690→                placeholder="Search guests by name…"
+   691→                className="pl-9"
+   692→              />
+   693→            </div>
+   694→            <div className="grid grid-cols-2 gap-2">
+   695→              <Select value={tierFilter} onValueChange={setTierFilter}>
+   696→                <SelectTrigger size="sm" className="w-full">
+   697→                  <SelectValue placeholder="Tier" />
+   698→                </SelectTrigger>
+   699→                <SelectContent>
+   700→                  <SelectItem value="all">All tiers</SelectItem>
+   701→                  {TIERS.map((t) => (
+   702→                    <SelectItem key={t} value={t}>{t}</SelectItem>
+   703→                  ))}
+   704→                </SelectContent>
+   705→              </Select>
+   706→              <Select value={segmentFilter} onValueChange={setSegmentFilter}>
+   707→                <SelectTrigger size="sm" className="w-full">
+   708→                  <SelectValue placeholder="Segment" />
+   709→                </SelectTrigger>
+   710→                <SelectContent>
+   711→                  <SelectItem value="all">All segments</SelectItem>
+   712→                  {SEGMENTS.map((s) => (
+   713→                    <SelectItem key={s} value={s}>{s}</SelectItem>
+   714→                  ))}
+   715→                </SelectContent>
+   716→              </Select>
+   717→            </div>
+   718→            <p className="px-1 text-[11px] text-muted-foreground">
+   719→              Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {GUESTS.length}
+   720→            </p>
+   721→          </div>
+   722→          <Separator className="mb-2" />
+   723→          {/* list */}
+   724→          <div className="min-h-0 flex-1 overflow-y-auto scroll-area-fancy pr-1">
+   725→            <div className="space-y-1.5">
+   726→              {filtered.map((g) => (
+   727→                <GuestListItem
+   728→                  key={g.id}
+   729→                  guest={g}
+   730→                  selected={g.id === effectiveId}
+   731→                  onSelect={() => handleSelect(g.id)}
+   732→                />
+   733→              ))}
+   734→              {filtered.length === 0 && (
+   735→                <div className="flex h-32 flex-col items-center justify-center gap-1 text-center">
+   736→                  <Search className="size-5 text-muted-foreground/60" />
+   737→                  <p className="text-xs text-muted-foreground">No guests match your filters</p>
+   738→                  <Button
+   739→                    size="sm"
+   740→                    variant="ghost"
+   741→                    onClick={() => { setSearch(''); setTierFilter('all'); setSegmentFilter('all') }}
+   742→                  >
+   743→                    Reset filters
+   744→                  </Button>
+   745→                </div>
+   746→              )}
+   747→            </div>
+   748→          </div>
+   749→        </Card>
+   750→
+   751→        {/* RIGHT: profile panel */}
+   752→        <div className={cn(mobileView === 'list' ? 'hidden lg:block' : 'block')}>
+   753→          <AnimatePresence mode="wait">
+   754→            {selectedGuest ? (
+   755→              <motion.div
+   756→                key={selectedGuest.id}
+   757→                initial={{ opacity: 0, y: 6 }}
+   758→                animate={{ opacity: 1, y: 0 }}
+   759→                exit={{ opacity: 0, y: -6 }}
+   760→                transition={{ duration: 0.2 }}
+   761→              >
+   762→                <GuestProfile guest={selectedGuest} onBack={handleBack} />
+   763→              </motion.div>
+   764→            ) : (
+   765→              <Card className="p-10 text-center text-muted-foreground">
+   766→                <Users className="mx-auto mb-2 size-6 text-muted-foreground/60" />
+   767→                <p className="text-sm">Select a guest to view their profile</p>
+   768→              </Card>
+   769→            )}
+   770→          </AnimatePresence>
+   771→        </div>
+   772→      </div>
+   773→    </div>
+   774→  )
+   775→}
+
+[showing lines 1-775 of 776; use offset=776 with limit to continue reading]

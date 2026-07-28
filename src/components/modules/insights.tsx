@@ -4,37 +4,46 @@ import * as React from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { StatCard, SectionHeader } from '@/components/shared'
-import { INSIGHTS } from '@/lib/data'
-import type { Insight } from '@/lib/types'
-import { relativeDate } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import { SectionHeader } from '@/components/shared'
+import { INSIGHTS, AI_AGENTS } from '@/lib/data'
+import { BRIEF_ACTIONS } from '@/lib/data-v2'
+import type { BriefAction } from '@/lib/data-v2'
+import type { Insight, AIAgent } from '@/lib/types'
+import { relativeDate, fmtMoney } from '@/lib/format'
 import { toast } from 'sonner'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import ReactMarkdown from 'react-markdown'
 import {
-  Sparkles, RefreshCw, AlertTriangle, Lightbulb, TrendingUp, TrendingDown, Gauge,
-  ShieldAlert, Zap, Brain, Activity, ArrowRight, Clock,
+  Sparkles, RefreshCw, AlertTriangle, Lightbulb, TrendingUp,
+  ShieldAlert, Zap, Brain, Clock, Check, X, FileText,
+  BedDouble, Banknote, Target, Eye,
 } from 'lucide-react'
 
 type Severity = Insight['severity']
 
-const SEVERITY_META: Record<Severity, { cls: string; dot: string; icon: React.ReactNode; label: string }> = {
-  info: { cls: 'bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400', dot: 'bg-teal-500', icon: <Lightbulb className="h-3.5 w-3.5" />, label: 'Info' },
-  success: { cls: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400', dot: 'bg-emerald-500', icon: <TrendingUp className="h-3.5 w-3.5" />, label: 'Success' },
-  warning: { cls: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400', dot: 'bg-amber-500', icon: <AlertTriangle className="h-3.5 w-3.5" />, label: 'Warning' },
-  critical: { cls: 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400', dot: 'bg-rose-500', icon: <ShieldAlert className="h-3.5 w-3.5" />, label: 'Critical' },
+const SEVERITY_META: Record<Severity, { cls: string; icon: React.ReactNode; label: string }> = {
+  info: { cls: 'bg-teal-500/10 border-teal-500/20 text-teal-600 dark:text-teal-400', icon: <Lightbulb className="h-3.5 w-3.5" />, label: 'Info' },
+  success: { cls: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400', icon: <TrendingUp className="h-3.5 w-3.5" />, label: 'Success' },
+  warning: { cls: 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400', icon: <AlertTriangle className="h-3.5 w-3.5" />, label: 'Warning' },
+  critical: { cls: 'bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400', icon: <ShieldAlert className="h-3.5 w-3.5" />, label: 'Critical' },
 }
 
-const CATEGORY_META: Record<Insight['category'], { cls: string; icon: React.ReactNode }> = {
-  Forecast: { cls: 'bg-orange-500/15 text-orange-600 dark:text-orange-400', icon: <Activity className="h-3 w-3" /> },
-  Trend: { cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400', icon: <TrendingUp className="h-3 w-3" /> },
-  Threat: { cls: 'bg-rose-500/15 text-rose-600 dark:text-rose-400', icon: <ShieldAlert className="h-3 w-3" /> },
-  Opportunity: { cls: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', icon: <Lightbulb className="h-3 w-3" /> },
-  Pricing: { cls: 'bg-teal-500/15 text-teal-600 dark:text-teal-400', icon: <Gauge className="h-3 w-3" /> },
-}
+const AGENT_BY_ID: Record<string, AIAgent> = Object.fromEntries(
+  AI_AGENTS.map(a => [a.id, a]),
+)
 
-// ----- AI Brief -----
+const BRIEF_SECTIONS = [
+  'Yesterday', 'Today\'s priorities', 'Revenue at risk', 'VIP arrivals',
+  'Guest issues', 'Maintenance risks', 'Empty rooms', 'Competitor activity',
+  'Marketing opportunities', 'Expected revenue', 'Recommended actions',
+]
+
+// ============================================================
+//  CEO Daily Brief — auto-generate on mount, markdown-ish render
+// ============================================================
+
 function BriefCard() {
   const [brief, setBrief] = React.useState<string>('')
   const [loading, setLoading] = React.useState(false)
@@ -64,7 +73,6 @@ function BriefCard() {
     }
   }, [])
 
-  // Auto-generate on first load
   React.useEffect(() => {
     if (didAuto.current) return
     didAuto.current = true
@@ -84,12 +92,14 @@ function BriefCard() {
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl md:text-2xl font-bold tracking-tight">Today&apos;s AI Brief</h2>
+                <h2 className="text-xl md:text-2xl font-bold tracking-tight">Today&apos;s CEO Brief</h2>
                 <Badge variant="outline" className="bg-background/60 backdrop-blur-sm text-[10px] border-orange-500/30 text-orange-600 dark:text-orange-400">
-                  <Sparkles className="h-2.5 w-2.5 mr-1" /> Nana · GM AI
+                  <Sparkles className="h-2.5 w-2.5 mr-1" /> Nana · General Manager AI
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-0.5">Your morning revenue briefing — synthesized from all 10 AI agents.</p>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Synthesized overnight from {AI_AGENTS.length} agents · 47 actions · 31 auto-executed.
+              </p>
             </div>
           </div>
           <Button
@@ -98,8 +108,8 @@ function BriefCard() {
             disabled={loading}
             className="shrink-0"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-            {loading ? 'Generating…' : brief ? 'Refresh brief' : 'Generate brief'}
+            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            {loading ? 'Generating…' : brief ? 'Regenerate' : 'Generate brief'}
           </Button>
         </div>
       </div>
@@ -138,7 +148,25 @@ function BriefCard() {
             className="space-y-1"
           >
             <div className="text-sm leading-relaxed text-foreground/90 [&_strong]:font-semibold [&_strong]:text-foreground">
-              {renderMarkdownish(brief)}
+              <ReactMarkdown
+                components={{
+                  h1: ({ children }) => (
+                    <p className="mt-2 mb-1 text-sm font-bold text-foreground">{children}</p>
+                  ),
+                  h2: ({ children }) => (
+                    <p className="mt-2 mb-1 text-sm font-bold text-foreground">{children}</p>
+                  ),
+                  h3: ({ children }) => (
+                    <p className="mt-1.5 mb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {children}
+                    </p>
+                  ),
+                  ul: ({ children }) => <ul className="ml-4 list-disc space-y-0.5">{children}</ul>,
+                  ol: ({ children }) => <ol className="ml-4 list-decimal space-y-0.5">{children}</ol>,
+                }}
+              >
+                {brief}
+              </ReactMarkdown>
             </div>
             <div className="flex items-center gap-2 pt-3 text-[11px] text-muted-foreground">
               <Clock className="h-3 w-3" />
@@ -147,159 +175,345 @@ function BriefCard() {
           </motion.div>
         )}
       </div>
-    </Card>
-  )
-}
 
-// Lightweight markdown-ish renderer: bold **x**, headers lines starting with emoji, bullet lines
-function renderMarkdownish(text: string): React.ReactNode {
-  const lines = text.split('\n')
-  return lines.map((line, i) => {
-    const trimmed = line.trim()
-    if (!trimmed) return <div key={i} className="h-2" />
-    // Headers: lines starting with emoji or all-bold markers
-    const isHeader = /^[📊⚠️💡📈🚨✅🎯💰🛎️]/.test(trimmed) || /^#{1,3}\s/.test(trimmed)
-    if (isHeader) {
-      const cleaned = trimmed.replace(/^#{1,3}\s/, '')
-      return (
-        <p key={i} className="font-bold text-foreground mt-3 mb-1 first:mt-0">{cleaned}</p>
-      )
-    }
-    // Bullet
-    if (/^[•\-*]\s/.test(trimmed)) {
-      const content = trimmed.replace(/^[•\-*]\s/, '')
-      return (
-        <p key={i} className="pl-3 relative before:content-[''] before:absolute before:left-0 before:top-2 before:h-1.5 before:w-1.5 before:rounded-full before:bg-orange-500">
-          {renderInlineBold(content)}
+      {/* Sections covered strip */}
+      <div className="border-t border-border/60 bg-muted/20 px-5 md:px-6 py-3">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+          Sections covered
         </p>
-      )
-    }
-    return <p key={i} className="text-foreground/85">{renderInlineBold(trimmed)}</p>
-  })
-}
-
-function renderInlineBold(text: string): React.ReactNode {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g)
-  return parts.map((p, i) => {
-    if (p.startsWith('**') && p.endsWith('**')) {
-      return <strong key={i} className="font-semibold text-foreground">{p.slice(2, -2)}</strong>
-    }
-    return <React.Fragment key={i}>{p}</React.Fragment>
-  })
-}
-
-// ----- Sentiment strip -----
-function SentimentStrip() {
-  const items = [
-    { label: 'Revenue Pulse', value: 82, color: 'from-orange-500 to-amber-500', icon: <Activity className="h-3.5 w-3.5" /> },
-    { label: 'Occupancy Trend', value: 76, color: 'from-teal-500 to-emerald-500', icon: <TrendingUp className="h-3.5 w-3.5" /> },
-    { label: 'Guest Sentiment', value: 91, color: 'from-emerald-500 to-green-500', icon: <Sparkles className="h-3.5 w-3.5" /> },
-    { label: 'Risk Level', value: 34, color: 'from-rose-500 to-red-500', icon: <ShieldAlert className="h-3.5 w-3.5" /> },
-    { label: 'Pricing Confidence', value: 88, color: 'from-violet-500 to-purple-500', icon: <Gauge className="h-3.5 w-3.5" /> },
-  ]
-  return (
-    <Card className="p-4">
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {items.map(s => (
-          <div key={s.label} className="space-y-1.5">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <span className="text-muted-foreground">{s.icon}</span>
-                {s.label}
-              </span>
-              <span className="font-semibold">{s.value}</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div className={`h-full rounded-full bg-gradient-to-r ${s.color}`} style={{ width: `${s.value}%` }} />
-            </div>
-          </div>
-        ))}
+        <div className="flex flex-wrap gap-1.5">
+          {BRIEF_SECTIONS.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+            >
+              <Check className="h-2.5 w-2.5 text-emerald-500" strokeWidth={3} />
+              {s}
+            </span>
+          ))}
+        </div>
       </div>
     </Card>
   )
 }
 
-// ----- Insight card -----
-function InsightCard({ insight, index }: { insight: Insight; index: number }) {
-  const sev = SEVERITY_META[insight.severity]
-  const cat = CATEGORY_META[insight.category]
+// ============================================================
+//  Action queue — approve / reject / acknowledge
+// ============================================================
+
+type ResolvedStatus = 'pending' | 'approved' | 'rejected' | 'acknowledged'
+
+const TYPE_META: Record<BriefAction['type'], { cls: string; label: string; icon: React.ReactNode }> = {
+  approve: {
+    cls: 'bg-violet-500/15 text-violet-600 dark:text-violet-400 border-violet-500/30',
+    label: 'Approve',
+    icon: <Check className="h-3 w-3" />,
+  },
+  review: {
+    cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
+    label: 'Review',
+    icon: <Eye className="h-3 w-3" />,
+  },
+  info: {
+    cls: 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30',
+    label: 'Info',
+    icon: <FileText className="h-3 w-3" />,
+  },
+}
+
+function ActionCard({
+  action,
+  status,
+  onApprove,
+  onReject,
+  onAcknowledge,
+  index,
+}: {
+  action: BriefAction
+  status: ResolvedStatus
+  onApprove: () => void
+  onReject: () => void
+  onAcknowledge: () => void
+  index: number
+}) {
+  const agent = AGENT_BY_ID[action.agentId]
+  const typeMeta = TYPE_META[action.type]
+  const isResolved = status !== 'pending'
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04 }}
-      className={`rounded-xl border ${sev.cls} p-3.5 backdrop-blur-sm`}
+      exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.2 } }}
+      transition={{ delay: Math.min(index * 0.04, 0.3) }}
     >
-      <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${cat.cls}`}>
-            {cat.icon} {insight.category}
-          </span>
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium ${sev.cls} border`}>
-            {sev.icon} {sev.label}
-          </span>
+      <Card
+        className={cn(
+          'relative overflow-hidden p-4 transition-all',
+          isResolved && 'opacity-60',
+        )}
+      >
+        <div
+          className={cn(
+            'absolute inset-y-0 left-0 w-1',
+            status === 'approved' && 'bg-emerald-500',
+            status === 'rejected' && 'bg-rose-500',
+            status === 'acknowledged' && 'bg-slate-400',
+            status === 'pending' && action.type === 'approve' && 'bg-violet-500',
+            status === 'pending' && action.type === 'review' && 'bg-amber-500',
+            status === 'pending' && action.type === 'info' && 'bg-slate-400',
+          )}
+        />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 mb-1.5">
+              <Badge variant="outline" className={cn('gap-1 px-1.5 py-0 text-[10px] font-semibold', typeMeta.cls)}>
+                {typeMeta.icon}
+                {typeMeta.label}
+              </Badge>
+              {isResolved && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'gap-1 px-1.5 py-0 text-[10px] font-semibold',
+                    status === 'approved' && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+                    status === 'rejected' && 'border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-400',
+                    status === 'acknowledged' && 'border-slate-500/30 bg-slate-500/10 text-slate-500 dark:text-slate-400',
+                  )}
+                >
+                  {status === 'approved' && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                  {status === 'rejected' && <X className="h-2.5 w-2.5" strokeWidth={3} />}
+                  {status === 'acknowledged' && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                  {status === 'approved' ? 'Approved' : status === 'rejected' ? 'Rejected' : 'Acknowledged'}
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm font-semibold leading-snug text-foreground">{action.title}</p>
+            <p className="mt-1 text-xs text-muted-foreground leading-relaxed">{action.detail}</p>
+
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {/* impact */}
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <TrendingUp className="h-2.5 w-2.5" />
+                {action.impact}
+              </span>
+              {/* agent */}
+              {agent && (
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span
+                    className="inline-flex h-4 w-4 items-center justify-center rounded text-[10px]"
+                    style={{
+                      backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
+                      border: `1px solid ${agent.color}40`,
+                    }}
+                  >
+                    {agent.avatar}
+                  </span>
+                  <span className="font-medium text-foreground/80">{agent.name}</span>
+                  <span>· {agent.role}</span>
+                </span>
+              )}
+            </div>
+          </div>
         </div>
-        <span className="text-[10px] text-muted-foreground shrink-0">{relativeDate(insight.date)}</span>
-      </div>
-      <p className="text-sm font-semibold mb-1">{insight.title}</p>
-      <p className="text-xs text-muted-foreground leading-relaxed">{insight.detail}</p>
-      {insight.action && (
-        <div className="mt-2.5 flex items-center justify-end">
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 px-2 text-xs"
-            onClick={() => toast.success('Action triggered', { description: insight.action })}
-          >
-            {insight.action} <ArrowRight className="h-3 w-3" />
-          </Button>
-        </div>
-      )}
+
+        {!isResolved && (
+          <div className="mt-3.5 flex flex-wrap items-center gap-2">
+            {action.type === 'info' ? (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onAcknowledge}
+                className="h-8 gap-1.5 text-xs border-slate-500/30 text-slate-600 dark:text-slate-300 hover:bg-slate-500/10"
+              >
+                <Check className="h-3.5 w-3.5" /> Acknowledged
+              </Button>
+            ) : (
+              <>
+                <Button
+                  size="sm"
+                  onClick={onApprove}
+                  className="h-8 gap-1.5 text-xs bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  <Check className="h-3.5 w-3.5" /> Approve
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={onReject}
+                  className="h-8 gap-1.5 text-xs border-rose-500/30 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+                >
+                  <X className="h-3.5 w-3.5" /> Reject
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </Card>
     </motion.div>
   )
 }
 
-// ----- Grouped feed -----
-function InsightsFeed() {
-  const categories: Insight['category'][] = ['Forecast', 'Trend', 'Threat', 'Opportunity', 'Pricing']
+function ActionQueue() {
+  // local resolution state per action id
+  const [resolved, setResolved] = React.useState<Record<string, ResolvedStatus>>({})
+
+  const counts = React.useMemo(() => {
+    let approved = 0, rejected = 0, pending = 0, acknowledged = 0
+    BRIEF_ACTIONS.forEach(a => {
+      const s = resolved[a.id] ?? 'pending'
+      if (s === 'approved') approved++
+      else if (s === 'rejected') rejected++
+      else if (s === 'acknowledged') acknowledged++
+      else pending++
+    })
+    return { approved, rejected, pending, acknowledged }
+  }, [resolved])
+
+  function handleApprove(a: BriefAction) {
+    setResolved(prev => ({ ...prev, [a.id]: 'approved' }))
+    const agent = AGENT_BY_ID[a.agentId]
+    toast.success('Approved — AI executing', {
+      description: `${a.title.replace(/^(Approve:|Review:|Info:)\s*/, '')}${agent ? ` · ${agent.name} on it` : ''}`,
+    })
+  }
+  function handleReject(a: BriefAction) {
+    setResolved(prev => ({ ...prev, [a.id]: 'rejected' }))
+    toast.error('Rejected', {
+      description: `${a.title.replace(/^(Approve:|Review:|Info:)\s*/, '')} · AI will not execute`,
+    })
+  }
+  function handleAcknowledge(a: BriefAction) {
+    setResolved(prev => ({ ...prev, [a.id]: 'acknowledged' }))
+    toast.success('Acknowledged', {
+      description: `${a.title.replace(/^(Approve:|Review:|Info:)\s*/, '')} · marked as read`,
+    })
+  }
+
   return (
     <Card className="p-5">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="font-semibold">Insight Feed</h3>
-          <p className="text-xs text-muted-foreground">Grouped by category · all from today</p>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-orange-500/10 text-violet-600 dark:text-violet-400">
+            <Zap className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="font-semibold">Action Queue</h3>
+            <p className="text-xs text-muted-foreground">Approve, reject, or let the AI auto-run.</p>
+          </div>
         </div>
-        <Badge variant="outline" className="text-[10px]">{INSIGHTS.length} insights</Badge>
+        {/* count chips */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="outline" className="gap-1 text-[10px] border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+            <Check className="h-2.5 w-2.5" strokeWidth={3} /> {counts.approved} approved
+          </Badge>
+          <Badge variant="outline" className="gap-1 text-[10px] border-rose-500/30 text-rose-600 dark:text-rose-400">
+            <X className="h-2.5 w-2.5" strokeWidth={3} /> {counts.rejected} rejected
+          </Badge>
+          <Badge variant="outline" className="gap-1 text-[10px] border-amber-500/30 text-amber-600 dark:text-amber-400">
+            <Clock className="h-2.5 w-2.5" /> {counts.pending} pending
+          </Badge>
+        </div>
       </div>
-      <div className="space-y-5">
-        {categories.map(cat => {
-          const items = INSIGHTS.filter(i => i.category === cat)
-          if (items.length === 0) return null
-          return (
-            <div key={cat}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${CATEGORY_META[cat].cls}`}>
-                  {CATEGORY_META[cat].icon} {cat}
-                </span>
-                <span className="text-[10px] text-muted-foreground">{items.length} {items.length === 1 ? 'item' : 'items'}</span>
-                <Separator className="flex-1" />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-                {items.map((ins, i) => <InsightCard key={ins.id} insight={ins} index={i} />)}
-              </div>
-            </div>
-          )
-        })}
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <AnimatePresence mode="popLayout">
+          {BRIEF_ACTIONS.map((a, i) => (
+            <ActionCard
+              key={a.id}
+              action={a}
+              index={i}
+              status={resolved[a.id] ?? 'pending'}
+              onApprove={() => handleApprove(a)}
+              onReject={() => handleReject(a)}
+              onAcknowledge={() => handleAcknowledge(a)}
+            />
+          ))}
+        </AnimatePresence>
       </div>
     </Card>
   )
 }
 
-// ----- Threats & Opportunities two-column -----
+// ============================================================
+//  Sentiment / score strip — 4 small cards
+// ============================================================
+
+function ScoreStrip() {
+  // derive values from INSIGHTS
+  const occForecast = INSIGHTS.find(i => i.title.toLowerCase().includes('tomorrow'))
+  const occPct = occForecast ? occForecast.title.match(/(\d+)%/)?.[1] : '67'
+  const threatsOpen = INSIGHTS.filter(i => i.severity === 'critical' || i.severity === 'warning').length
+  const oppsFound = INSIGHTS.filter(i => i.severity === 'success' || i.severity === 'info').length
+  // revenue at risk: empty Friday rooms (ins-1) implies ₵6,400
+  const revenueAtRisk = 6400
+
+  const cards = [
+    {
+      label: 'Occupancy forecast',
+      value: `${occPct}%`,
+      sub: 'tomorrow',
+      icon: <BedDouble className="h-4 w-4" />,
+      accent: 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+      ring: 'from-orange-500/15 to-amber-500/5',
+    },
+    {
+      label: 'Revenue at risk',
+      value: fmtMoney(revenueAtRisk),
+      sub: 'if no action taken',
+      icon: <Banknote className="h-4 w-4" />,
+      accent: 'bg-rose-500/15 text-rose-600 dark:text-rose-400',
+      ring: 'from-rose-500/15 to-red-500/5',
+    },
+    {
+      label: 'Threats open',
+      value: String(threatsOpen),
+      sub: 'need attention',
+      icon: <ShieldAlert className="h-4 w-4" />,
+      accent: 'bg-amber-500/15 text-amber-600 dark:text-amber-400',
+      ring: 'from-amber-500/15 to-yellow-500/5',
+    },
+    {
+      label: 'Opportunities found',
+      value: String(oppsFound),
+      sub: 'upside plays',
+      icon: <Target className="h-4 w-4" />,
+      accent: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+      ring: 'from-emerald-500/15 to-teal-500/5',
+    },
+  ]
+  return (
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {cards.map(c => (
+        <Card key={c.label} className={cn('relative overflow-hidden p-4 gap-0')}>
+          <div className={cn('absolute -right-4 -top-4 h-16 w-16 rounded-full bg-gradient-to-br blur-2xl opacity-60', c.ring)} />
+          <div className="relative flex items-start justify-between gap-2">
+            <div className="min-w-0 space-y-1">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground truncate">
+                {c.label}
+              </p>
+              <p className="text-xl font-bold tracking-tight">{c.value}</p>
+              <p className="text-[10px] text-muted-foreground">{c.sub}</p>
+            </div>
+            <div className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', c.accent)}>
+              {c.icon}
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+// ============================================================
+//  Threats & Opportunities two-column
+// ============================================================
+
 function ThreatsOpportunities() {
   const threats = INSIGHTS.filter(i => i.severity === 'critical' || i.severity === 'warning')
   const opportunities = INSIGHTS.filter(i => i.severity === 'success' || i.severity === 'info')
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       {/* Threats */}
@@ -318,8 +532,8 @@ function ThreatsOpportunities() {
           <ScrollArea className="max-h-96 pr-2">
             <div className="space-y-2">
               {threats.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">No active threats. 🎉</p>}
-              {threats.map((t, i) => (
-                <div key={t.id} className={`rounded-xl border p-3 ${SEVERITY_META[t.severity].cls}`}>
+              {threats.map((t) => (
+                <div key={t.id} className={cn('rounded-xl border p-3', SEVERITY_META[t.severity].cls)}>
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold">{t.title}</p>
                     <span className="text-[10px] shrink-0 opacity-80">{t.category}</span>
@@ -359,7 +573,7 @@ function ThreatsOpportunities() {
             <div className="space-y-2">
               {opportunities.length === 0 && <p className="text-xs text-muted-foreground text-center py-6">No opportunities flagged.</p>}
               {opportunities.map((t) => (
-                <div key={t.id} className={`rounded-xl border p-3 ${SEVERITY_META[t.severity].cls}`}>
+                <div key={t.id} className={cn('rounded-xl border p-3', SEVERITY_META[t.severity].cls)}>
                   <div className="flex items-start justify-between gap-2">
                     <p className="text-sm font-semibold">{t.title}</p>
                     <span className="text-[10px] shrink-0 opacity-80">{t.category}</span>
@@ -385,40 +599,36 @@ function ThreatsOpportunities() {
   )
 }
 
-export function InsightsModule() {
-  const today = new Date().toISOString().slice(0, 10)
-  const insightsToday = INSIGHTS.filter(i => i.date === today).length
-  const threatsOpen = INSIGHTS.filter(i => (i.severity === 'critical' || i.severity === 'warning')).length
-  const opportunitiesFound = INSIGHTS.filter(i => i.severity === 'success' || i.severity === 'info').length
-  const actionsSuggested = INSIGHTS.filter(i => Boolean(i.action)).length
+// ============================================================
+//  Main module
+// ============================================================
 
+export function InsightsModule() {
   return (
     <div className="space-y-5">
       <SectionHeader
-        title="AI Insights"
-        description="Your daily morning brief — threats, opportunities, and AI-recommended actions."
+        title="Daily CEO Brief"
+        description="Your AI General Manager's morning report. Approve, reject, or let it auto-run."
         action={
-          <Badge variant="outline" className="text-[10px] bg-background/60">
-            <Sparkles className="h-3 w-3 text-orange-500" /> {insightsToday} new today
+          <Badge variant="outline" className="gap-1 text-[10px] bg-background/60">
+            <Sparkles className="h-3 w-3 text-orange-500" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+            auto-updated 4:30 AM
           </Badge>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Insights Today" value={`${insightsToday}`} sub="across all categories" icon={<Sparkles className="h-5 w-5" />} accent="brand" />
-        <StatCard label="Threats Open" value={`${threatsOpen}`} sub="need attention" icon={<ShieldAlert className="h-5 w-5" />} accent="rose" />
-        <StatCard label="Opportunities" value={`${opportunitiesFound}` } sub="upside identified" icon={<Lightbulb className="h-5 w-5" />} accent="teal" />
-        <StatCard label="Actions Suggested" value={`${actionsSuggested}`} sub="AI-recommended next steps" icon={<Zap className="h-5 w-5" />} accent="gold" />
-      </div>
-
-      <SentimentStrip />
-
+      {/* Hero brief — auto-generates on mount */}
       <BriefCard />
 
-      <ThreatsOpportunities />
+      {/* Score strip */}
+      <ScoreStrip />
 
-      <InsightsFeed />
+      {/* Action queue */}
+      <ActionQueue />
+
+      {/* Threats & Opportunities */}
+      <ThreatsOpportunities />
     </div>
   )
 }

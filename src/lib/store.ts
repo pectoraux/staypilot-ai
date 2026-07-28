@@ -3,25 +3,37 @@
 import { create } from 'zustand'
 
 export type ModuleKey =
-  | 'dashboard'
+  | 'mission-control'
+  | 'missions'
+  | 'opportunities'
+  | 'agents'
+  | 'insights'
+  | 'digital-twin'
+  | 'knowledge-graph'
+  | 'predictions'
+  | 'segmentation'
+  | 'funnel'
   | 'calendar'
   | 'reservations'
-  | 'guests'
-  | 'channels'
-  | 'marketing'
-  | 'booking-engine'
-  | 'loyalty'
-  | 'reputation'
-  | 'revenue'
-  | 'competitors'
-  | 'concierge'
-  | 'agents'
   | 'housekeeping'
   | 'maintenance'
+  | 'guests'
+  | 'loyalty'
+  | 'concierge'
+  | 'marketing'
+  | 'experiments'
+  | 'booking-engine'
+  | 'reputation'
   | 'corporate'
   | 'experiences'
+  | 'revenue'
+  | 'competitors'
+  | 'channels'
+  | 'direct-intel'
   | 'finance'
-  | 'insights'
+  | 'multi-property'
+  | 'website-builder'
+  | 'marketplace'
 
 interface AppState {
   activeModule: ModuleKey
@@ -33,10 +45,10 @@ interface AppState {
 }
 
 export const useApp = create<AppState>((set) => ({
-  activeModule: 'dashboard',
+  activeModule: 'mission-control',
   selectedGuestId: null,
   sidebarOpen: false,
-  setModule: (m) => set({ activeModule: m, selectedGuestId: m === 'guests' ? null : null }),
+  setModule: (m) => set({ activeModule: m, selectedGuestId: null }),
   openGuest: (id) => set({ selectedGuestId: id, activeModule: 'guests' }),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
 }))
