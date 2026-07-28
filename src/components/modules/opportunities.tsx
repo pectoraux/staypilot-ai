@@ -15,7 +15,6 @@ import type { Opportunity, OpportunityType } from '@/lib/data-v2'
 import { AI_AGENTS } from '@/lib/data'
 import { fmtMoney, fmtMoneyShort, fmtPct, relativeDate, initials } from '@/lib/format'
 import { StatCard, SectionHeader } from '@/components/shared'
-import { toast, Toaster as SonnerToaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles, Zap, Check, Clock, Brain, ChevronDown, Play, Target,
@@ -485,7 +484,6 @@ export function OpportunitiesModule() {
         </div>
       </Card>
 
-      <SonnerToaster position="top-right" richColors closeButton />
     </div>
   )
 }

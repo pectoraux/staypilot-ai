@@ -1,0 +1,1060 @@
+     1→'use client'
+     2→
+     3→import * as React from 'react'
+     4→import { Card } from '@/components/ui/card'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Input } from '@/components/ui/input'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import { Separator } from '@/components/ui/separator'
+    10→import {
+    11→  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+    12→} from '@/components/ui/dialog'
+    13→import {
+    14→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    15→} from '@/components/ui/tooltip'
+    16→import { cn } from '@/lib/utils'
+    17→import { AI_AGENTS, PROPERTY } from '@/lib/data'
+    18→import { CASCADES, DIGITAL_TWIN } from '@/lib/data-v2'
+    19→import type { Cascade } from '@/lib/data-v2'
+    20→import { StatCard, SectionHeader, StatusPill } from '@/components/shared'
+    21→import { toast } from 'sonner'
+    22→import { motion, AnimatePresence } from 'framer-motion'
+    23→import ReactMarkdown from 'react-markdown'
+    24→import type { AIAgent } from '@/lib/types'
+    25→import {
+    26→  Bot, Send, Sparkles, Activity, MessageCircle, Crown, Zap, Cpu,
+    27→  CheckCircle2, AlertCircle, RefreshCw, Brain, Workflow,
+    28→  Check, Clock,
+    29→} from 'lucide-react'
+    30→
+    31→// ============================================================
+    32→//  Workforce — 12 specialized autonomous agents collaborating 24/7
+    33→// ============================================================
+    34→
+    35→// Augment V1 AI_AGENTS (10) with 2 more to reach the 12-agent autonomous team
+    36→const EXTRA_AGENTS: AIAgent[] = [
+    37→  { id: 'agent-11', name: 'Kwesi', role: 'Housekeeping Supervisor', status: 'Active', avatar: '🧹', lastAction: 'Reassigned 3 room turnovers ahead of early check-ins', tasksCompleted: 167, color: '#15803d', description: 'Optimizes cleaning schedules, turn-over times, and inspection checklists across the property.' },
+    38→  { id: 'agent-12', name: 'Esi', role: 'Maintenance Manager', status: 'Working', avatar: '🔧', lastAction: 'Scheduled emergency AC repair for room 102', tasksCompleted: 89, color: '#c2410c', description: 'Prevents and resolves maintenance issues before they impact guest experience.' },
+    39→]
+    40→
+    41→const TEAM: AIAgent[] = [...AI_AGENTS, ...EXTRA_AGENTS]
+    42→const AGENT_BY_ID: Record<string, AIAgent> = Object.fromEntries(
+    43→  TEAM.map(a => [a.id, a]),
+    44→)
+    45→
+    46→// ---------- per-agent chat ----------
+    47→interface AgentMsg {
+    48→  id: string
+    49→  role: 'user' | 'assistant'
+    50→  content: string
+    51→  ts: string
+    52→}
+    53→
+    54→const now = () =>
+    55→  new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    56→
+    57→// ---------- status pulse dot ----------
+    58→function StatusDot({ status }: { status: AIAgent['status'] }) {
+    59→  const color =
+    60→    status === 'Active' ? '#16a34a' : status === 'Working' ? '#ea580c' : '#94a3b8'
+    61→  return (
+    62→    <span className="relative flex h-2.5 w-2.5">
+    63→      {(status === 'Active' || status === 'Working') && (
+    64→        <span
+    65→          className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-60"
+    66→          style={{ backgroundColor: color }}
+    67→        />
+    68→      )}
+    69→      <span
+    70→        className="relative inline-flex h-2.5 w-2.5 rounded-full"
+    71→        style={{ backgroundColor: color }}
+    72→      />
+    73→    </span>
+    74→  )
+    75→}
+    76→
+    77→// ---------- agent card ----------
+    78→function AgentCard({
+    79→  agent,
+    80→  onChat,
+    81→  index,
+    82→}: {
+    83→  agent: AIAgent
+    84→  onChat: (a: AIAgent) => void
+    85→  index: number
+    86→}) {
+    87→  return (
+    88→    <motion.div
+    89→      initial={{ opacity: 0, y: 8 }}
+    90→      animate={{ opacity: 1, y: 0 }}
+    91→      transition={{ delay: Math.min(index * 0.025, 0.4), type: 'spring', stiffness: 300, damping: 22 }}
+    92→      whileHover={{ y: -3 }}
+    93→    >
+    94→      <Card className="group relative h-full overflow-hidden p-4">
+    95→        <div
+    96→          className="absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl transition-opacity group-hover:opacity-45"
+    97→          style={{ backgroundColor: agent.color }}
+    98→        />
+    99→        <div
+   100→          className="absolute inset-x-0 top-0 h-0.5"
+   101→          style={{ backgroundColor: agent.color }}
+   102→        />
+   103→        <div className="relative flex items-start gap-3">
+   104→          <div
+   105→            className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl shadow-inner"
+   106→            style={{
+   107→              backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
+   108→              border: `1px solid ${agent.color}40`,
+   109→            }}
+   110→          >
+   111→            <span>{agent.avatar}</span>
+   112→            {(agent.status === 'Active' || agent.status === 'Working') && (
+   113→              <span
+   114→                className="absolute -right-1 -top-1 h-3 w-3 rounded-full ring-2 ring-card"
+   115→                style={{ backgroundColor: agent.status === 'Active' ? '#16a34a' : '#ea580c' }}
+   116→              >
+   117→                <span
+   118→                  className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70"
+   119→                  style={{ backgroundColor: agent.status === 'Active' ? '#16a34a' : '#ea580c' }}
+   120→                />
+   121→              </span>
+   122→            )}
+   123→          </div>
+   124→          <div className="min-w-0 flex-1">
+   125→            <div className="flex items-center justify-between gap-2">
+   126→              <p className="truncate text-sm font-bold">{agent.name}</p>
+   127→              <StatusPill status={agent.status} />
+   128→            </div>
+   129→            <p className="truncate text-xs font-medium text-muted-foreground">
+   130→              {agent.role}
+   131→            </p>
+   132→          </div>
+   133→        </div>
+   134→
+   135→        <p className="relative mt-3 line-clamp-2 text-xs text-muted-foreground">
+   136→          <span className="font-medium text-foreground/80">Last: </span>
+   137→          {agent.lastAction}
+   138→        </p>
+   139→
+   140→        <div className="relative mt-3 flex items-center justify-between">
+   141→          <TooltipProvider>
+   142→            <Tooltip>
+   143→              <TooltipTrigger asChild>
+   144→                <div className="flex cursor-default items-center gap-1.5 text-xs text-muted-foreground">
+   145→                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+   146→                  <span className="font-semibold text-foreground">{agent.tasksCompleted}</span>
+   147→                  <span>tasks</span>
+   148→                </div>
+   149→              </TooltipTrigger>
+   150→              <TooltipContent>All-time tasks completed by {agent.name}</TooltipContent>
+   151→            </Tooltip>
+   152→          </TooltipProvider>
+   153→          <Button
+   154→            size="sm"
+   155→            variant="outline"
+   156→            onClick={() => onChat(agent)}
+   157→            className="h-7 gap-1.5 px-2.5 text-xs"
+   158→            style={{ borderColor: `${agent.color}55`, color: agent.color }}
+   159→          >
+   160→            <MessageCircle className="h-3.5 w-3.5" />
+   161→            Chat
+   162→          </Button>
+   163→        </div>
+   164→      </Card>
+   165→    </motion.div>
+   166→  )
+   167→}
+   168→
+   169→// ---------- agent chat dialog ----------
+   170→function AgentChatDialog({
+   171→  agent,
+   172→  open,
+   173→  onOpenChange,
+   174→}: {
+   175→  agent: AIAgent | null
+   176→  open: boolean
+   177→  onOpenChange: (v: boolean) => void
+   178→}) {
+   179→  const [histories, setHistories] = React.useState<Record<string, AgentMsg[]>>({})
+   180→  const [input, setInput] = React.useState('')
+   181→  const [sending, setSending] = React.useState(false)
+   182→  const scrollRef = React.useRef<HTMLDivElement>(null)
+   183→
+   184→  const messages = agent ? histories[agent.id] ?? [] : []
+   185→
+   186→  React.useEffect(() => {
+   187→    const el = scrollRef.current
+   188→    if (el) el.scrollTop = el.scrollHeight
+   189→  }, [messages.length, sending, agent?.id])
+   190→
+   191→  async function send(text: string) {
+   192→    const trimmed = text.trim()
+   193→    if (!trimmed || sending || !agent) return
+   194→    const userMsg: AgentMsg = {
+   195→      id: `u-${Date.now()}`,
+   196→      role: 'user',
+   197→      content: trimmed,
+   198→      ts: now(),
+   199→    }
+   200→    const prior = histories[agent.id] ?? []
+   201→    const next = [...prior, userMsg]
+   202→    setHistories((h) => ({ ...h, [agent.id]: next }))
+   203→    setInput('')
+   204→    setSending(true)
+   205→    try {
+   206→      const history = next.map((m) => ({ role: m.role, content: m.content }))
+   207→      const res = await fetch('/api/ai', {
+   208→        method: 'POST',
+   209→        headers: { 'Content-Type': 'application/json' },
+   210→        body: JSON.stringify({
+   211→          mode: 'agent-chat',
+   212→          agentRole: `${agent.role} at ${PROPERTY.name}`,
+   213→          message: trimmed,
+   214→          history,
+   215→        }),
+   216→      })
+   217→      const data = await res.json()
+   218→      const reply =
+   219→        data?.reply ??
+   220→        `I'm ${agent.name}, your ${agent.role}. I'm reviewing the latest signals and will be with you shortly.`
+   221→      const aiMsg: AgentMsg = {
+   222→        id: `a-${Date.now()}`,
+   223→        role: 'assistant',
+   224→        content: reply,
+   225→        ts: now(),
+   226→      }
+   227→      setHistories((h) => ({ ...h, [agent.id]: [...(h[agent.id] ?? []), aiMsg] }))
+   228→    } catch {
+   229→      toast.error(`${agent.name} couldn't reply. Try again.`)
+   230→    } finally {
+   231→      setSending(false)
+   232→    }
+   233→  }
+   234→
+   235→  function reset() {
+   236→    if (!agent) return
+   237→    setHistories((h) => {
+   238→      const copy = { ...h }
+   239→      delete copy[agent.id]
+   240→      return copy
+   241→    })
+   242→    toast.success(`Cleared conversation with ${agent.name}`)
+   243→  }
+   244→
+   245→  return (
+   246→    <Dialog open={open} onOpenChange={onOpenChange}>
+   247→      <DialogContent className="flex max-h-[88vh] flex-col gap-0 p-0 sm:max-w-2xl">
+   248→        {agent && (
+   249→          <>
+   250→            <DialogHeader className="flex-row items-center gap-3 border-b border-border/60 px-4 py-3 text-left">
+   251→              <div
+   252→                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-2xl"
+   253→                style={{
+   254→                  backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
+   255→                  border: `1px solid ${agent.color}40`,
+   256→                }}
+   257→              >
+   258→                <span>{agent.avatar}</span>
+   259→              </div>
+   260→              <div className="min-w-0 flex-1">
+   261→                <DialogTitle className="flex items-center gap-2 text-base">
+   262→                  {agent.name}
+   263→                  <StatusPill status={agent.status} />
+   264→                </DialogTitle>
+   265→                <DialogDescription className="text-xs">
+   266→                  {agent.role} · {PROPERTY.name}
+   267→                </DialogDescription>
+   268→              </div>
+   269→              <TooltipProvider>
+   270→                <Tooltip>
+   271→                  <TooltipTrigger asChild>
+   272→                    <Button size="icon" variant="ghost" className="h-8 w-8" onClick={reset}>
+   273→                      <RefreshCw className="h-3.5 w-3.5" />
+   274→                    </Button>
+   275→                  </TooltipTrigger>
+   276→                  <TooltipContent>Reset conversation</TooltipContent>
+   277→                </Tooltip>
+   278→              </TooltipProvider>
+   279→            </DialogHeader>
+   280→
+   281→            <p className="border-b border-border/40 bg-muted/30 px-4 py-2 text-xs italic text-muted-foreground">
+   282→              {agent.description}
+   283→            </p>
+   284→
+   285→            <div
+   286→              ref={scrollRef}
+   287→              className="scroll-area-fancy flex-1 space-y-3 overflow-y-auto px-4 py-4"
+   288→              style={{ minHeight: '260px', maxHeight: '46vh' }}
+   289→            >
+   290→              {messages.length === 0 && (
+   291→                <div className="flex flex-col items-center justify-center gap-2 py-10 text-center">
+   292→                  <div
+   293→                    className="flex h-14 w-14 items-center justify-center rounded-2xl text-3xl"
+   294→                    style={{
+   295→                      backgroundImage: `linear-gradient(135deg, ${agent.color}33, ${agent.color}11)`,
+   296→                      border: `1px solid ${agent.color}40`,
+   297→                    }}
+   298→                  >
+   299→                    {agent.avatar}
+   300→                  </div>
+   301→                  <p className="text-sm font-semibold">Chat with {agent.name}</p>
+   302→                  <p className="max-w-xs text-xs text-muted-foreground">
+   303→                    Ask {agent.name} about {agent.role.toLowerCase()} work —
+   304→                    pricing, campaigns, retention, or any data point.
+   305→                  </p>
+   306→                  <div className="mt-2 flex flex-wrap justify-center gap-2">
+   307→                    {(SUGGESTED_QUESTIONS[agent.role] ?? SUGGESTED_QUESTIONS.default).map((q) => (
+   308→                      <button
+   309→                        key={q}
+   310→                        onClick={() => send(q)}
+   311→                        disabled={sending}
+   312→                        className="rounded-full border border-border/60 bg-card px-3 py-1 text-xs text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground disabled:opacity-50"
+   313→                      >
+   314→                        {q}
+   315→                      </button>
+   316→                    ))}
+   317→                  </div>
+   318→                </div>
+   319→              )}
+   320→              <AnimatePresence initial={false}>
+   321→                {messages.map((m) => (
+   322→                  <motion.div
+   323→                    key={m.id}
+   324→                    initial={{ opacity: 0, y: 6 }}
+   325→                    animate={{ opacity: 1, y: 0 }}
+   326→                    className={cn(
+   327→                      'flex w-full',
+   328→                      m.role === 'user' ? 'justify-end' : 'justify-start',
+   329→                    )}
+   330→                  >
+   331→                    <div
+   332→                      className={cn(
+   333→                        'max-w-[82%] rounded-2xl px-3 py-2 text-sm',
+   334→                        m.role === 'user'
+   335→                          ? 'rounded-tr-sm bg-primary text-primary-foreground'
+   336→                          : 'rounded-tl-sm bg-muted text-foreground',
+   337→                      )}
+   338→                    >
+   339→                      {m.role === 'assistant' && (
+   340→                        <div className="mb-1 flex items-center gap-1.5">
+   341→                          <span
+   342→                            className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+   343→                            style={{
+   344→                              backgroundColor: `${agent.color}22`,
+   345→                              color: agent.color,
+   346→                            }}
+   347→                          >
+   348→                            <Sparkles className="h-2.5 w-2.5" /> {agent.name}
+   349→                          </span>
+   350→                        </div>
+   351→                      )}
+   352→                      <p className="whitespace-pre-wrap break-words leading-relaxed">{m.content}</p>
+   353→                      <p
+   354→                        className={cn(
+   355→                          'mt-1 text-right text-[10px]',
+   356→                          m.role === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground',
+   357→                        )}
+   358→                      >
+   359→                        {m.ts}
+   360→                      </p>
+   361→                    </div>
+   362→                  </motion.div>
+   363→                ))}
+   364→              </AnimatePresence>
+   365→              {sending && (
+   366→                <motion.div
+   367→                  initial={{ opacity: 0, y: 6 }}
+   368→                  animate={{ opacity: 1, y: 0 }}
+   369→                  className="flex justify-start"
+   370→                >
+   371→                  <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm bg-muted px-3 py-2.5">
+   372→                    <span
+   373→                      className="inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
+   374→                      style={{ backgroundColor: `${agent.color}22`, color: agent.color }}
+   375→                    >
+   376→                      <Sparkles className="h-2.5 w-2.5" /> {agent.name}
+   377→                    </span>
+   378→                    <div className="flex items-center gap-1">
+   379→                      {[0, 1, 2].map((i) => (
+   380→                        <motion.span
+   381→                          key={i}
+   382→                          className="h-1.5 w-1.5 rounded-full bg-muted-foreground"
+   383→                          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+   384→                          transition={{ duration: 1, repeat: Infinity, delay: i * 0.18 }}
+   385→                        />
+   386→                      ))}
+   387→                    </div>
+   388→                  </div>
+   389→                </motion.div>
+   390→              )}
+   391→            </div>
+   392→
+   393→            <div className="flex items-center gap-2 border-t border-border/60 px-3 py-3">
+   394→              <Input
+   395→                value={input}
+   396→                onChange={(e) => setInput(e.target.value)}
+   397→                onKeyDown={(e) => {
+   398→                  if (e.key === 'Enter' && !e.shiftKey) {
+   399→                    e.preventDefault()
+   400→                    send(input)
+   401→                  }
+   402→                }}
+   403→                placeholder={`Ask ${agent.name} anything…`}
+   404→                disabled={sending}
+   405→                className="h-10 flex-1"
+   406→              />
+   407→              <Button
+   408→                onClick={() => send(input)}
+   409→                disabled={sending || !input.trim()}
+   410→                size="icon"
+   411→                className="h-10 w-10 shrink-0"
+   412→                style={{ backgroundColor: agent.color, color: '#fff' }}
+   413→              >
+   414→                {sending ? (
+   415→                  <motion.span
+   416→                    animate={{ rotate: 360 }}
+   417→                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+   418→                  >
+   419→                    <Sparkles className="h-4 w-4" />
+   420→                  </motion.span>
+   421→                ) : (
+   422→                  <Send className="h-4 w-4" />
+   423→                )}
+   424→              </Button>
+   425→            </div>
+   426→          </>
+   427→        )}
+   428→      </DialogContent>
+   429→    </Dialog>
+   430→  )
+   431→}
+   432→
+   433→// suggested opening questions per role
+   434→const SUGGESTED_QUESTIONS: Record<string, string[]> = {
+   435→  'Revenue Manager': ['What rates should I set this weekend?', 'Where are we leaving margin on the table?'],
+   436→  'Revenue Director': ['What rates should I set this weekend?', 'Where are we leaving margin on the table?'],
+   437→  'Marketing Manager': ['Draft a campaign for empty Friday rooms', 'Which segment should I target next?'],
+   438→  'Marketing Director': ['Draft a campaign for empty Friday rooms', 'Which segment should I target next?'],
+   439→  'Guest Success Manager': ['Which OTA guests should I convert?', 'Who are my most at-risk VIPs?'],
+   440→  'Guest Relations Manager': ['Which OTA guests should I convert?', 'Who are my most at-risk VIPs?'],
+   441→  'CRM Manager': ['Which lapsed VIPs should I reach out to?', 'How is retention trending?'],
+   442→  'Pricing Analyst': ['How do my rates compare to competitors?', 'What nights are underpriced?'],
+   443→  'OTA Manager': ['Any calendar conflicts today?', 'How is inventory syncing?'],
+   444→  'Reputation Manager': ['Which reviews need responses?', 'What is our sentiment trend?'],
+   445→  'Sales Manager': ['Which corporate contracts are renewing?', 'Best group-rate opportunity?'],
+   446→  'Operations Manager': ['Any bottlenecks in housekeeping?', 'Which rooms block check-ins?'],
+   447→  'Finance Analyst': ['Summarize this month\'s cash flow', 'Where are commissions leaking?'],
+   448→  'Finance Manager': ['Summarize this month\'s cash flow', 'Where are commissions leaking?'],
+   449→  'Housekeeping Supervisor': ['Which rooms need urgent turnaround?', 'How is the inspection pipeline?'],
+   450→  'Maintenance Manager': ['Which issues should we prioritize?', 'Any preventive tasks overdue?'],
+   451→  'General Manager': ['Give me the morning brief', 'What needs my attention today?'],
+   452→  default: ['What did you do this morning?', 'What needs my approval?'],
+   453→}
+   454→
+   455→// ============================================================
+   456→//  Cascade flow — the centerpiece: live org executing
+   457→// ============================================================
+   458→
+   459→function parseMinutesAgo(ts: string): number {
+   460→  if (ts === 'now') return 0
+   461→  if (ts === '—' || !ts) return Number.POSITIVE_INFINITY
+   462→  const hMatch = ts.match(/(\d+)\s*h\s*(?:(\d+)\s*m)?/)
+   463→  if (hMatch) {
+   464→    const h = parseInt(hMatch[1]) || 0
+   465→    const m = parseInt(hMatch[2] || '0') || 0
+   466→    return h * 60 + m
+   467→  }
+   468→  const mMatch = ts.match(/(\d+)\s*min/)
+   469→  if (mMatch) return parseInt(mMatch[1])
+   470→  return 9999
+   471→}
+   472→
+   473→function CascadeStepNode({
+   474→  status,
+   475→  agent,
+   476→  index,
+   477→}: {
+   478→  status: 'done' | 'active' | 'pending'
+   479→  agent: AIAgent | undefined
+   480→  index: number
+   481→}) {
+   482→  const color = agent?.color ?? '#94a3b8'
+   483→  const ringColor =
+   484→    status === 'done' ? '#10b981' : status === 'active' ? '#ea580c' : '#94a3b8'
+   485→  return (
+   486→    <div className="relative shrink-0">
+   487→      <div
+   488→        className="relative flex h-10 w-10 items-center justify-center rounded-xl text-lg shadow-inner"
+   489→        style={{
+   490→          backgroundImage: `linear-gradient(135deg, ${color}33, ${color}11)`,
+   491→          border: `1.5px solid ${ringColor}`,
+   492→          boxShadow: status === 'active' ? `0 0 0 4px ${ringColor}22` : undefined,
+   493→        }}
+   494→      >
+   495→        <span>{agent?.avatar ?? '🤖'}</span>
+   496→        {/* step number badge */}
+   497→        <span
+   498→          className="absolute -left-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white"
+   499→          style={{ backgroundColor: ringColor }}
+   500→        >
+   501→          {index}
+   502→        </span>
+   503→        {/* status dot bottom-right */}
+   504→        <span
+   505→          className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full ring-2 ring-card"
+   506→          style={{ backgroundColor: ringColor }}
+   507→        >
+   508→          {status === 'done' && <Check className="h-2 w-2 text-white" strokeWidth={4} />}
+   509→          {status === 'active' && (
+   510→            <>
+   511→              <span
+   512→                className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-70"
+   513→                style={{ backgroundColor: ringColor }}
+   514→              />
+   515→              <span className="relative h-1.5 w-1.5 rounded-full bg-white" />
+   516→            </>
+   517→          )}
+   518→          {status === 'pending' && (
+   519→            <Clock className="h-1.5 w-1.5 text-white" strokeWidth={3} />
+   520→          )}
+   521→        </span>
+   522→      </div>
+   523→    </div>
+   524→  )
+   525→}
+   526→
+   527→function CascadeFlow({ cascade, index }: { cascade: Cascade; index: number }) {
+   528→  const isRunning = cascade.status === 'running'
+   529→  return (
+   530→    <motion.div
+   531→      initial={{ opacity: 0, y: 12 }}
+   532→      animate={{ opacity: 1, y: 0 }}
+   533→      transition={{ delay: index * 0.08 }}
+   534→    >
+   535→      <Card className="flex h-full flex-col p-0 overflow-hidden">
+   536→        {/* Trigger banner */}
+   537→        <div className="relative overflow-hidden bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-rose-500/10 p-4">
+   538→          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-orange-500/20 blur-2xl" />
+   539→          <div className="relative flex items-start gap-2.5">
+   540→            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow">
+   541→              <Zap className="h-4 w-4" />
+   542→            </div>
+   543→            <div className="min-w-0 flex-1">
+   544→              <div className="flex items-center gap-1.5 mb-0.5">
+   545→                <span className="text-[10px] font-bold uppercase tracking-wider text-orange-600 dark:text-orange-400">
+   546→                  Trigger
+   547→                </span>
+   548→                {isRunning && (
+   549→                  <Badge
+   550→                    variant="outline"
+   551→                    className="gap-1 px-1.5 py-0 text-[9px] font-semibold text-orange-600 dark:text-orange-400 border-orange-500/30 bg-orange-500/10"
+   552→                  >
+   553→                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+   554→                    RUNNING
+   555→                  </Badge>
+   556→                )}
+   557→              </div>
+   558→              <p className="text-xs font-semibold leading-snug text-foreground">
+   559→                {cascade.trigger}
+   560→              </p>
+   561→              <p className="mt-1 text-[10px] text-muted-foreground">Started {cascade.startedAt}</p>
+   562→            </div>
+   563→          </div>
+   564→        </div>
+   565→
+   566→        {/* Steps */}
+   567→        <div className="relative flex-1 px-4 py-4">
+   568→          {/* vertical connector line */}
+   569→          <div className="absolute left-[36px] top-4 bottom-4 w-0.5 bg-gradient-to-b from-orange-500/50 via-border to-emerald-500/50" />
+   570→
+   571→          <ol className="space-y-3">
+   572→            {cascade.steps.map((step, i) => {
+   573→              const agent = AGENT_BY_ID[step.agentId]
+   574→              return (
+   575→                <motion.li
+   576→                  key={`${cascade.id}-step-${i}`}
+   577→                  initial={{ opacity: 0, x: -4 }}
+   578→                  animate={{ opacity: 1, x: 0 }}
+   579→                  transition={{ delay: 0.15 + i * 0.07 }}
+   580→                  className="relative flex items-start gap-3"
+   581→                >
+   582→                  {/* node sits above the line */}
+   583→                  <div className="relative z-10 bg-card">
+   584→                    <CascadeStepNode status={step.status} agent={agent} index={i + 1} />
+   585→                  </div>
+   586→                  <div className="min-w-0 flex-1 pt-0.5">
+   587→                    <div className="flex items-center justify-between gap-2">
+   588→                      <div className="min-w-0">
+   589→                        <p className="truncate text-xs font-semibold text-foreground">
+   590→                          {step.agent}{' '}
+   591→                          <span className="font-normal text-muted-foreground">· {step.role}</span>
+   592→                        </p>
+   593→                        <p className="mt-0.5 text-xs leading-snug text-foreground/85">
+   594→                          {step.action}
+   595→                        </p>
+   596→                      </div>
+   597→                      <div className="shrink-0 text-right">
+   598→                        <span
+   599→                          className={cn(
+   600→                            'inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+   601→                            step.status === 'done' && 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
+   602→                            step.status === 'active' && 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+   603→                            step.status === 'pending' && 'bg-slate-500/15 text-slate-500 dark:text-slate-400',
+   604→                          )}
+   605→                        >
+   606→                          {step.status === 'done' && <Check className="h-2 w-2" strokeWidth={4} />}
+   607→                          {step.status === 'active' && (
+   608→                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+   609→                          )}
+   610→                          {step.status === 'pending' && <Clock className="h-2 w-2" />}
+   611→                          {step.status === 'done' ? 'done' : step.status === 'active' ? 'active' : 'pending'}
+   612→                        </span>
+   613→                        <p className="mt-0.5 text-[9px] text-muted-foreground">{step.timestamp}</p>
+   614→                      </div>
+   615→                    </div>
+   616→                  </div>
+   617→                </motion.li>
+   618→              )
+   619→            })}
+   620→          </ol>
+   621→        </div>
+   622→
+   623→        {/* Outcome banner */}
+   624→        <div className="relative overflow-hidden border-t border-emerald-500/20 bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-emerald-500/5 p-4">
+   625→          <div className="absolute -left-6 -bottom-6 h-20 w-20 rounded-full bg-emerald-500/15 blur-2xl" />
+   626→          <div className="relative flex items-start gap-2.5">
+   627→            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow">
+   628→              <CheckCircle2 className="h-4 w-4" />
+   629→            </div>
+   630→            <div className="min-w-0 flex-1">
+   631→              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+   632→                Projected Outcome
+   633→              </span>
+   634→              <p className="text-xs font-semibold leading-snug text-foreground">
+   635→                {cascade.outcome}
+   636→              </p>
+   637→            </div>
+   638→          </div>
+   639→        </div>
+   640→      </Card>
+   641→    </motion.div>
+   642→  )
+   643→}
+   644→
+   645→// ============================================================
+   646→//  Activity feed — live timeline of recent agent actions
+   647→// ============================================================
+   648→
+   649→interface ActivityItem {
+   650→  id: string
+   651→  agent: AIAgent | undefined
+   652→  agentName: string
+   653→  role: string
+   654→  action: string
+   655→  ts: string
+   656→  kind: 'action' | 'cascade'
+   657→  status?: 'done' | 'active' | 'pending'
+   658→}
+   659→
+   660→function buildActivity(): ActivityItem[] {
+   661→  const items: ActivityItem[] = []
+   662→  // from agents' lastAction
+   663→  AI_AGENTS.forEach((a, i) => {
+   664→    items.push({
+   665→      id: `act-${a.id}`,
+   666→      agent: a,
+   667→      agentName: a.name,
+   668→      role: a.role,
+   669→      action: a.lastAction,
+   670→      ts: `${i * 5 + 4} min ago`,
+   671→      kind: 'action',
+   672→    })
+   673→  })
+   674→  // from cascade steps (exclude pending '—')
+   675→  CASCADES.forEach((c) => {
+   676→    c.steps.forEach((s, i) => {
+   677→      if (s.timestamp === '—' || !s.timestamp) return
+   678→      items.push({
+   679→        id: `cas-${c.id}-${i}`,
+   680→        agent: AGENT_BY_ID[s.agentId],
+   681→        agentName: s.agent,
+   682→        role: s.role,
+   683→        action: s.action,
+   684→        ts: s.timestamp,
+   685→        kind: 'cascade',
+   686→        status: s.status,
+   687→      })
+   688→    })
+   689→  })
+   690→  return items.sort((a, b) => parseMinutesAgo(a.ts) - parseMinutesAgo(b.ts))
+   691→}
+   692→
+   693→function ActivityFeed() {
+   694→  const items = React.useMemo(() => buildActivity(), [])
+   695→  const top = items.slice(0, 14)
+   696→  return (
+   697→    <Card className="flex h-full flex-col p-4">
+   698→      <div className="flex items-center justify-between">
+   699→        <div className="flex items-center gap-2">
+   700→          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-orange-500/15 text-orange-600 dark:text-orange-400">
+   701→            <Activity className="h-4 w-4" />
+   702→          </div>
+   703→          <div>
+   704→            <h3 className="text-sm font-semibold">Live Activity</h3>
+   705→            <p className="text-[11px] text-muted-foreground">Agent actions & collaborations</p>
+   706→          </div>
+   707→        </div>
+   708→        <Badge variant="secondary" className="gap-1 text-[10px]">
+   709→          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+   710→          live
+   711→        </Badge>
+   712→      </div>
+   713→      <Separator className="my-3" />
+   714→      <ScrollArea className="scroll-area-fancy -mx-1 flex-1 pr-1" style={{ maxHeight: '420px' }}>
+   715→        <ol className="relative ml-2 space-y-1 border-l border-border/60 pl-4">
+   716→          {top.map((item, idx) => {
+   717→            const color = item.agent?.color ?? '#94a3b8'
+   718→            return (
+   719→              <motion.li
+   720→                key={item.id}
+   721→                initial={{ opacity: 0, x: -6 }}
+   722→                animate={{ opacity: 1, x: 0 }}
+   723→                transition={{ delay: Math.min(idx * 0.03, 0.4) }}
+   724→                className="relative pb-3"
+   725→              >
+   726→                <span
+   727→                  className="absolute -left-[1.40rem] top-1 flex h-3 w-3 items-center justify-center rounded-full ring-2 ring-card"
+   728→                  style={{ backgroundColor: color }}
+   729→                />
+   730→                <div className="flex items-start gap-2">
+   731→                  <div className="min-w-0 flex-1">
+   732→                    <div className="flex flex-wrap items-center gap-1.5">
+   733→                      <span className="text-sm">{item.agent?.avatar ?? '🤖'}</span>
+   734→                      <span className="text-xs font-semibold">{item.agentName}</span>
+   735→                      <span className="text-[10px] text-muted-foreground">· {item.role}</span>
+   736→                      {item.kind === 'cascade' && (
+   737→                        <Badge
+   738→                          variant="outline"
+   739→                          className="shrink-0 gap-0.5 border-violet-500/40 px-1 py-0 text-[9px] text-violet-600 dark:text-violet-400"
+   740→                        >
+   741→                          <Workflow className="h-2 w-2" />
+   742→                          cascade
+   743→                        </Badge>
+   744→                      )}
+   745→                    </div>
+   746→                    <p className="mt-0.5 text-xs text-foreground/90">{item.action}</p>
+   747→                    <p className="mt-0.5 text-[10px] text-muted-foreground">{item.ts}</p>
+   748→                  </div>
+   749→                </div>
+   750→              </motion.li>
+   751→            )
+   752→          })}
+   753→        </ol>
+   754→      </ScrollArea>
+   755→    </Card>
+   756→  )
+   757→}
+   758→
+   759→// ============================================================
+   760→//  Morning brief generator
+   761→// ============================================================
+   762→
+   763→function MorningBrief() {
+   764→  const [brief, setBrief] = React.useState<string | null>(null)
+   765→  const [loading, setLoading] = React.useState(false)
+   766→
+   767→  async function generate() {
+   768→    setLoading(true)
+   769→    setBrief(null)
+   770→    try {
+   771→      const res = await fetch('/api/ai', {
+   772→        method: 'POST',
+   773→        headers: { 'Content-Type': 'application/json' },
+   774→        body: JSON.stringify({ mode: 'brief' }),
+   775→      })
+   776→      const data = await res.json()
+   777→      setBrief(data?.reply ?? 'No brief available.')
+   778→    } catch {
+   779→      toast.error('Failed to generate brief. Try again.')
+   780→    } finally {
+   781→      setLoading(false)
+   782→    }
+   783→  }
+   784→
+   785→  return (
+   786→    <Card className="relative overflow-hidden p-5">
+   787→      <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/10 blur-2xl" />
+   788→      <div className="relative flex items-start justify-between gap-3">
+   789→        <div className="flex items-start gap-3">
+   790→          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/10 text-amber-600 dark:text-amber-400">
+   791→            <Crown className="h-5 w-5" />
+   792→          </div>
+   793→          <div>
+   794→            <h3 className="text-sm font-semibold">CEO Morning Brief</h3>
+   795→            <p className="text-[11px] text-muted-foreground">
+   796→              Nana, your General Manager AI, synthesizes the day ahead.
+   797→            </p>
+   798→          </div>
+   799→        </div>
+   800→        <Button
+   801→          size="sm"
+   802→          onClick={generate}
+   803→          disabled={loading}
+   804→          className="shrink-0 gap-1.5 bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600"
+   805→        >
+   806→          {loading ? (
+   807→            <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+   808→          ) : (
+   809→            <Sparkles className="h-3.5 w-3.5" />
+   810→          )}
+   811→          {loading ? 'Generating…' : brief ? 'Regenerate' : 'Generate brief'}
+   812→        </Button>
+   813→      </div>
+   814→
+   815→      <Separator className="my-4" />
+   816→
+   817→      {loading && (
+   818→        <div className="space-y-2">
+   819→          {[...Array(6)].map((_, i) => (
+   820→            <div
+   821→              key={i}
+   822→              className="shimmer h-3 rounded-full"
+   823→              style={{ width: `${[100, 92, 96, 88, 70, 84][i]}%` }}
+   824→            />
+   825→          ))}
+   826→        </div>
+   827→      )}
+   828→
+   829→      {!loading && !brief && (
+   830→        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">
+   831→          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+   832→            <Crown className="h-5 w-5 text-muted-foreground" />
+   833→          </div>
+   834→          <p className="text-sm font-medium">No brief yet today</p>
+   835→          <p className="max-w-xs text-xs text-muted-foreground">
+   836→            Generate a 60-second snapshot of today&apos;s threats, opportunities, and top 3 recommendations.
+   837→          </p>
+   838→        </div>
+   839→      )}
+   840→
+   841→      {!loading && brief && (
+   842→        <motion.div
+   843→          initial={{ opacity: 0, y: 8 }}
+   844→          animate={{ opacity: 1, y: 0 }}
+   845→          className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed text-foreground/90 [&_li]:my-0.5 [&_p]:my-1.5 [&_strong]:text-foreground"
+   846→        >
+   847→          <ReactMarkdown
+   848→            components={{
+   849→              h1: ({ children }) => (
+   850→                <p className="mt-2 mb-1 text-sm font-bold text-foreground">{children}</p>
+   851→              ),
+   852→              h2: ({ children }) => (
+   853→                <p className="mt-2 mb-1 text-sm font-bold text-foreground">{children}</p>
+   854→              ),
+   855→              h3: ({ children }) => (
+   856→                <p className="mt-1.5 mb-0.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+   857→                  {children}
+   858→                </p>
+   859→              ),
+   860→              ul: ({ children }) => <ul className="ml-4 list-disc space-y-0.5">{children}</ul>,
+   861→              ol: ({ children }) => <ol className="ml-4 list-decimal space-y-0.5">{children}</ol>,
+   862→            }}
+   863→          >
+   864→            {brief}
+   865→          </ReactMarkdown>
+   866→        </motion.div>
+   867→      )}
+   868→    </Card>
+   869→  )
+   870→}
+   871→
+   872→// ============================================================
+   873→//  Main module
+   874→// ============================================================
+   875→
+   876→export function AgentsModule() {
+   877→  const [chatAgent, setChatAgent] = React.useState<AIAgent | null>(null)
+   878→  const [chatOpen, setChatOpen] = React.useState(false)
+   879→
+   880→  const totalTasks = TEAM.reduce((s, a) => s + a.tasksCompleted, 0)
+   881→  const activeNow = TEAM.filter((a) => a.status === 'Active' || a.status === 'Working').length
+   882→  const approvalsPending = DIGITAL_TWIN.liveMetrics.approvalsPending
+   883→  const autoActions = DIGITAL_TWIN.liveMetrics.autoActionsToday
+   884→  const tasksToday = DIGITAL_TWIN.liveMetrics.aiActionsToday
+   885→
+   886→  function openChat(a: AIAgent) {
+   887→    setChatAgent(a)
+   888→    setChatOpen(true)
+   889→  }
+   890→
+   891→  return (
+   892→    <div className="space-y-6">
+   893→      {/* header */}
+   894→      <SectionHeader
+   895→        title="AI Workforce — 12 specialized agents collaborating 24/7"
+   896→        description="They don't just answer questions. They detect problems, create tasks for each other, and execute autonomously."
+   897→        action={
+   898→          <Badge
+   899→            variant="secondary"
+   900→            className="hidden items-center gap-1.5 px-3 py-1.5 text-xs sm:inline-flex"
+   901→          >
+   902→            <Cpu className="h-3.5 w-3.5 text-orange-500" />
+   903→            {TEAM.length} agents online
+   904→          </Badge>
+   905→        }
+   906→      />
+   907→
+   908→      {/* explainer strip */}
+   909→      <Card className="overflow-hidden border-none p-0">
+   910→        <div className="relative bg-gradient-to-r from-rose-500/15 via-orange-500/15 to-amber-500/15 p-4 sm:p-5">
+   911→          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   912→            <div className="flex items-start gap-3">
+   913→              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 text-white shadow">
+   914→                <Brain className="h-5 w-5" />
+   915→              </div>
+   916→              <div>
+   917→                <p className="text-sm font-semibold">
+   918→                  Your autonomous revenue team is working right now.
+   919→                </p>
+   920→                <p className="mt-0.5 text-xs text-muted-foreground">
+   921→                  Each agent owns a domain — pricing, marketing, retention, reputation, ops —
+   922→                  and creates tasks for other agents when they detect a problem.
+   923→                </p>
+   924→              </div>
+   925→            </div>
+   926→            <div className="flex shrink-0 flex-wrap items-center gap-3 text-xs">
+   927→              <div className="flex items-center gap-1.5">
+   928→                <StatusDot status="Active" />
+   929→                <span className="text-muted-foreground">Active</span>
+   930→              </div>
+   931→              <div className="flex items-center gap-1.5">
+   932→                <StatusDot status="Working" />
+   933→                <span className="text-muted-foreground">Working</span>
+   934→              </div>
+   935→              <div className="flex items-center gap-1.5">
+   936→                <StatusDot status="Idle" />
+   937→                <span className="text-muted-foreground">Idle</span>
+   938→              </div>
+   939→            </div>
+   940→          </div>
+   941→        </div>
+   942→      </Card>
+   943→
+   944→      {/* stats */}
+   945→      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+   946→        <StatCard
+   947→          label="Total agents"
+   948→          value={String(TEAM.length)}
+   949→          sub="specialized roles"
+   950→          accent="brand"
+   951→          icon={<Bot className="h-5 w-5" />}
+   952→        />
+   953→        <StatCard
+   954→          label="Active now"
+   955→          value={String(activeNow)}
+   956→          sub={`${TEAM.length - activeNow} idle`}
+   957→          accent="teal"
+   958→          icon={<Activity className="h-5 w-5" />}
+   959→          trend={8}
+   960→        />
+   961→        <StatCard
+   962→          label="Tasks today"
+   963→          value={tasksToday.toLocaleString()}
+   964→          sub="across the team"
+   965→          accent="gold"
+   966→          icon={<CheckCircle2 className="h-5 w-5" />}
+   967→          trend={14}
+   968→        />
+   969→        <StatCard
+   970→          label="Approvals pending"
+   971→          value={String(approvalsPending)}
+   972→          sub="awaiting your call"
+   973→          accent="rose"
+   974→          icon={<AlertCircle className="h-5 w-5" />}
+   975→        />
+   976→        <StatCard
+   977→          label="Auto-actions today"
+   978→          value={autoActions.toLocaleString()}
+   979→          sub="executed without staff"
+   980→          accent="violet"
+   981→          icon={<Zap className="h-5 w-5" />}
+   982→        />
+   983→      </div>
+   984→
+   985→      {/* workforce org grid + activity column */}
+   986→      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_360px]">
+   987→        <div className="space-y-3">
+   988→          <div className="flex items-center justify-between">
+   989→            <h3 className="text-sm font-semibold text-muted-foreground">
+   990→              Workforce
+   991→            </h3>
+   992→            <span className="text-[11px] text-muted-foreground">
+   993→              {totalTasks.toLocaleString()} all-time tasks · click any agent to chat
+   994→            </span>
+   995→          </div>
+   996→          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+   997→            {TEAM.map((agent, i) => (
+   998→              <AgentCard key={agent.id} agent={agent} onChat={openChat} index={i} />
+   999→            ))}
+  1000→          </div>
+  1001→        </div>
+  1002→
+  1003→        <div className="space-y-5">
+  1004→          <MorningBrief />
+  1005→          <ActivityFeed />
+  1006→        </div>
+  1007→      </div>
+  1008→
+  1009→      {/* Cascade section — the centerpiece */}
+  1010→      <div className="space-y-3">
+  1011→        <div className="flex flex-wrap items-end justify-between gap-3">
+  1012→          <div className="space-y-1">
+  1013→            <div className="flex items-center gap-2">
+  1014→              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500/20 to-orange-500/10 text-violet-600 dark:text-violet-400">
+  1015→                <Workflow className="h-4 w-4" />
+  1016→              </div>
+  1017→              <h3 className="text-base font-bold">Live Collaboration Cascades</h3>
+  1018→              <Badge variant="outline" className="gap-1 text-[10px] border-orange-500/40 text-orange-600 dark:text-orange-400">
+  1019→                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-orange-500" />
+  1020→                {CASCADES.length} running
+  1021→              </Badge>
+  1022→            </div>
+  1023→            <p className="text-sm text-muted-foreground">
+  1024→              When one agent detects a problem, it creates tasks for other agents.
+  1025→              Watch the team execute end-to-end — without staff intervention.
+  1026→            </p>
+  1027→          </div>
+  1028→          <div className="hidden items-center gap-3 text-[10px] text-muted-foreground sm:flex">
+  1029→            <div className="flex items-center gap-1.5">
+  1030→              <span className="flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-white">
+  1031→                <Check className="h-2 w-2" strokeWidth={4} />
+  1032→              </span>
+  1033→              done
+  1034→            </div>
+  1035→            <div className="flex items-center gap-1.5">
+  1036→              <span className="h-3 w-3 animate-pulse rounded-full bg-orange-500" />
+  1037→              active
+  1038→            </div>
+  1039→            <div className="flex items-center gap-1.5">
+  1040→              <span className="flex h-3 w-3 items-center justify-center rounded-full bg-slate-400 text-white">
+  1041→                <Clock className="h-2 w-2" />
+  1042→              </span>
+  1043→              pending
+  1044→            </div>
+  1045→          </div>
+  1046→        </div>
+  1047→
+  1048→        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+  1049→          {CASCADES.map((cascade, i) => (
+  1050→            <CascadeFlow key={cascade.id} cascade={cascade} index={i} />
+  1051→          ))}
+  1052→        </div>
+  1053→      </div>
+  1054→
+  1055→      {/* agent chat dialog */}
+  1056→      <AgentChatDialog agent={chatAgent} open={chatOpen} onOpenChange={setChatOpen} />
+  1057→    </div>
+  1058→  )
+  1059→}
+  1060→

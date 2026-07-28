@@ -25,7 +25,6 @@ import type { Mission, MissionAction, MissionStatus, MissionType } from '@/lib/d
 import { AI_AGENTS } from '@/lib/data'
 import { fmtMoney, fmtMoneyShort, fmtPct, relativeDate, initials } from '@/lib/format'
 import { StatCard, SectionHeader, StatusPill } from '@/components/shared'
-import { toast, Toaster as SonnerToaster } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Target, Sparkles, Zap, Check, Clock, Brain, ChevronDown, Play, Pause,
@@ -634,7 +633,6 @@ export function MissionsModule() {
           </div>
         </Card>
 
-        <SonnerToaster position="top-right" richColors closeButton />
       </div>
     </TooltipProvider>
   )

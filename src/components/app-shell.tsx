@@ -8,8 +8,9 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useTheme } from 'next-themes'
-import { Moon, Sun, Menu, Search, Bell, Sparkles, Hotel, ChevronRight } from 'lucide-react'
+import { Moon, Sun, Menu, Search, Bell, Sparkles, Hotel, ChevronRight, Command } from 'lucide-react'
 import { ModuleRegistry } from './modules/registry'
+import { CopilotPalette } from './copilot-palette'
 
 function SidebarContent() {
   const { activeModule, setModule } = useApp()
@@ -110,14 +111,14 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-2">
-        <div className="hidden lg:flex items-center gap-2 rounded-full bg-muted/60 px-3 py-1.5 text-sm text-muted-foreground w-64">
-          <Search className="h-4 w-4" />
-          <input
-            placeholder="Search guests, bookings…"
-            className="w-full bg-transparent outline-none placeholder:text-muted-foreground/70"
-          />
-          <kbd className="rounded bg-background px-1.5 text-[10px] border border-border">⌘K</kbd>
-        </div>
+        <button
+          onClick={() => useApp.getState().setCopilotOpen(true)}
+          className="hidden lg:flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500/10 to-amber-500/10 border border-orange-500/20 px-3 py-1.5 text-sm text-muted-foreground w-72 hover:border-orange-500/40 transition-colors group"
+        >
+          <Command className="h-4 w-4 text-orange-500" />
+          <span className="flex-1 text-left">Ask the Copilot…</span>
+          <kbd className="rounded bg-background px-1.5 text-[10px] border border-border group-hover:border-orange-500/30">⌘K</kbd>
+        </button>
         <Button variant="ghost" size="icon" className="rounded-full relative" aria-label="Notifications">
           <Bell className="h-4 w-4" />
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500" />
@@ -160,6 +161,8 @@ export function AppShell() {
           <ModuleRegistry />
         </main>
       </div>
+
+      <CopilotPalette />
     </div>
   )
 }

@@ -45,7 +45,6 @@ import { useApp } from '@/lib/store'
 import {
   StatCard, SectionHeader, SourceBadge, StatusPill, TierBadge, PriorityPill,
 } from '@/components/shared'
-import { Toaster as SonnerToaster } from '@/components/ui/sonner'
 import { cn } from '@/lib/utils'
 import type { Guest, TimelineEntry, TimelineEntryType, BookingSource } from '@/lib/types'
 import type { JourneyStep, GuestMemory } from '@/lib/data-v2'
@@ -1407,7 +1406,6 @@ export function GuestsModule() {
 
   return (
     <div className="space-y-4">
-      <SonnerToaster position="top-right" richColors closeButton />
       <SectionHeader
         title="Guests CRM"
         description="AI-enriched guest profiles · journey maps · AI memory"

@@ -4,20 +4,28 @@ import * as React from 'react'
 import { useApp, type ModuleKey } from '@/lib/store'
 import { Skeleton } from '@/components/ui/skeleton'
 
-// Lazy-load each module so only the active one is compiled on demand.
 const lazy = <T extends { default: React.ComponentType }>(p: Promise<T>) =>
   React.lazy(() => p)
 
 const MissionControlModule = lazy(import('./mission-control').then(m => ({ default: m.MissionControlModule })))
 const MissionsModule = lazy(import('./missions').then(m => ({ default: m.MissionsModule })))
 const OpportunitiesModule = lazy(import('./opportunities').then(m => ({ default: m.OpportunitiesModule })))
+const CopilotModule = lazy(import('./copilot').then(m => ({ default: m.CopilotModule })))
 const AgentsModule = lazy(import('./agents').then(m => ({ default: m.AgentsModule })))
 const InsightsModule = lazy(import('./insights').then(m => ({ default: m.InsightsModule })))
+const NetworkIntelligenceModule = lazy(import('./network-intelligence').then(m => ({ default: m.NetworkIntelligenceModule })))
+const BenchmarkingModule = lazy(import('./benchmarking').then(m => ({ default: m.BenchmarkingModule })))
+const AIMarketplaceModule = lazy(import('./ai-marketplace').then(m => ({ default: m.AIMarketplaceModule })))
+const GuestNetworkModule = lazy(import('./guest-network').then(m => ({ default: m.GuestNetworkModule })))
 const DigitalTwinModule = lazy(import('./digital-twin').then(m => ({ default: m.DigitalTwinModule })))
 const KnowledgeGraphModule = lazy(import('./knowledge-graph').then(m => ({ default: m.KnowledgeGraphModule })))
 const PredictionsModule = lazy(import('./predictions').then(m => ({ default: m.PredictionsModule })))
 const SegmentationModule = lazy(import('./segmentation').then(m => ({ default: m.SegmentationModule })))
 const FunnelModule = lazy(import('./funnel').then(m => ({ default: m.FunnelModule })))
+const ReputationIntelModule = lazy(import('./reputation-intel').then(m => ({ default: m.ReputationIntelModule })))
+const PropertyBrainModule = lazy(import('./property-brain').then(m => ({ default: m.PropertyBrainModule })))
+const EventsModule = lazy(import('./events').then(m => ({ default: m.EventsModule })))
+const StaffOSModule = lazy(import('./staff-os').then(m => ({ default: m.StaffOSModule })))
 const CalendarModule = lazy(import('./calendar').then(m => ({ default: m.CalendarModule })))
 const ReservationsModule = lazy(import('./reservations').then(m => ({ default: m.ReservationsModule })))
 const HousekeepingModule = lazy(import('./housekeeping').then(m => ({ default: m.HousekeepingModule })))
@@ -35,6 +43,7 @@ const RevenueModule = lazy(import('./revenue').then(m => ({ default: m.RevenueMo
 const CompetitorsModule = lazy(import('./competitors').then(m => ({ default: m.CompetitorsModule })))
 const ChannelsModule = lazy(import('./channels').then(m => ({ default: m.ChannelsModule })))
 const DirectIntelModule = lazy(import('./direct-intel').then(m => ({ default: m.DirectIntelModule })))
+const PaymentsModule = lazy(import('./payments').then(m => ({ default: m.PaymentsModule })))
 const FinanceModule = lazy(import('./finance').then(m => ({ default: m.FinanceModule })))
 const MultiPropertyModule = lazy(import('./multi-property').then(m => ({ default: m.MultiPropertyModule })))
 const WebsiteBuilderModule = lazy(import('./website-builder').then(m => ({ default: m.WebsiteBuilderModule })))
@@ -44,13 +53,22 @@ const MAP: Record<ModuleKey, React.ComponentType> = {
   'mission-control': MissionControlModule,
   'missions': MissionsModule,
   'opportunities': OpportunitiesModule,
+  'copilot': CopilotModule,
   'agents': AgentsModule,
   'insights': InsightsModule,
+  'network-intelligence': NetworkIntelligenceModule,
+  'benchmarking': BenchmarkingModule,
+  'ai-marketplace': AIMarketplaceModule,
+  'guest-network': GuestNetworkModule,
   'digital-twin': DigitalTwinModule,
   'knowledge-graph': KnowledgeGraphModule,
   'predictions': PredictionsModule,
   'segmentation': SegmentationModule,
   'funnel': FunnelModule,
+  'reputation-intel': ReputationIntelModule,
+  'property-brain': PropertyBrainModule,
+  'events': EventsModule,
+  'staff-os': StaffOSModule,
   'calendar': CalendarModule,
   'reservations': ReservationsModule,
   'housekeeping': HousekeepingModule,
@@ -68,6 +86,7 @@ const MAP: Record<ModuleKey, React.ComponentType> = {
   'competitors': CompetitorsModule,
   'channels': ChannelsModule,
   'direct-intel': DirectIntelModule,
+  'payments': PaymentsModule,
   'finance': FinanceModule,
   'multi-property': MultiPropertyModule,
   'website-builder': WebsiteBuilderModule,

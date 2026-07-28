@@ -12,7 +12,6 @@ import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip
 import { StatCard, SectionHeader, StatusPill } from '@/components/shared'
 import { CAMPAIGNS, GUESTS } from '@/lib/data'
 import { fmtMoney, fmtMoneyShort, fmtPct, relativeDate } from '@/lib/format'
-import { toast, Toaster as SonnerToaster } from 'sonner'
 import {
   Megaphone, Sparkles, Send, Wand2, RefreshCw, Mail, MessageCircle,
   Smartphone, Facebook, Instagram, Bell, Globe, Crown, Building2, Baby,
@@ -906,7 +905,6 @@ export function MarketingModule() {
 
   return (
     <div className="space-y-8">
-      <SonnerToaster position="top-right" richColors closeButton />
 
       {/* Module header */}
       <div className="flex flex-wrap items-end justify-between gap-3">

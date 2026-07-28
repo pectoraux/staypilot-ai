@@ -1,0 +1,733 @@
+     1→'use client'
+     2→
+     3→import * as React from 'react'
+     4→import { motion, AnimatePresence } from 'framer-motion'
+     5→import { Card } from '@/components/ui/card'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Badge } from '@/components/ui/badge'
+     8→import { Separator } from '@/components/ui/separator'
+     9→import { ScrollArea } from '@/components/ui/scroll-area'
+    10→import { TooltipProvider } from '@/components/ui/tooltip'
+    11→import { StatCard } from '@/components/shared'
+    12→import { Toaster as SonnerToaster } from '@/components/ui/sonner'
+    13→import { REPUTATION_INSIGHTS, REVIEW_TOPICS } from '@/lib/data-v3'
+    14→import type { ReputationInsight } from '@/lib/data-v3'
+    15→import { toast } from 'sonner'
+    16→import {
+    17→  TrendingUp, TrendingDown, ThumbsUp, AlertCircle, Sparkles, BedDouble,
+    18→  ArrowRight, Hammer, Megaphone, Search, ShieldCheck, CheckCircle2,
+    19→  Clock, Loader2, Microscope, Activity, Star, MessageSquareQuote,
+    20→} from 'lucide-react'
+    21→import {
+    22→  ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+    23→  Radar, XAxis, YAxis, CartesianGrid, Tooltip as RTooltip,
+    24→  LineChart, Line, ReferenceLine,
+    25→} from 'recharts'
+    26→
+    27→// ---------- helpers ----------
+    28→
+    29→const SEVERITY_RING: Record<ReputationInsight['severity'], string> = {
+    30→  positive: 'border-emerald-500/30 bg-emerald-500/[0.04]',
+    31→  neutral: 'border-slate-500/30 bg-slate-500/[0.04]',
+    32→  negative: 'border-rose-500/30 bg-rose-500/[0.04]',
+    33→}
+    34→const SEVERITY_TEXT: Record<ReputationInsight['severity'], string> = {
+    35→  positive: 'text-emerald-600 dark:text-emerald-400',
+    36→  neutral: 'text-slate-600 dark:text-slate-300',
+    37→  negative: 'text-rose-600 dark:text-rose-400',
+    38→}
+    39→const SEVERITY_DOT: Record<ReputationInsight['severity'], string> = {
+    40→  positive: 'bg-emerald-500',
+    41→  neutral: 'bg-slate-400',
+    42→  negative: 'bg-rose-500',
+    43→}
+    44→
+    45→const TYPE_ICON: Record<ReputationInsight['type'], React.ComponentType<{ className?: string }>> = {
+    46→  'trend-up': TrendingUp,
+    47→  'trend-down': TrendingDown,
+    48→  'recurring-positive': ThumbsUp,
+    49→  'recurring-negative': AlertCircle,
+    50→  'room-specific': BedDouble,
+    51→  'service-highlight': Sparkles,
+    52→}
+    53→const TYPE_LABEL: Record<ReputationInsight['type'], string> = {
+    54→  'trend-up': 'Rising trend',
+    55→  'trend-down': 'Declining trend',
+    56→  'recurring-positive': 'Recurring praise',
+    57→  'recurring-negative': 'Recurring complaint',
+    58→  'room-specific': 'Room-specific',
+    59→  'service-highlight': 'Service highlight',
+    60→}
+    61→
+    62→// ---------- mock: sentiment-over-time series ----------
+    63→const SENTIMENT_OVER_TIME = [
+    64→  { week: 'W1', avg: 4.3, negative: 6 },
+    65→  { week: 'W2', avg: 4.4, negative: 5 },
+    66→  { week: 'W3', avg: 4.2, negative: 7 },
+    67→  { week: 'W4', avg: 4.1, negative: 9 },
+    68→  { week: 'W5', avg: 4.0, negative: 10 },
+    69→  { week: 'W6', avg: 4.2, negative: 8 },
+    70→  { week: 'W7', avg: 4.3, negative: 7 },
+    71→  { week: 'W8', avg: 4.4, negative: 6 },
+    72→  { week: 'W9', avg: 4.5, negative: 5 },
+    73→  { week: 'W10', avg: 4.4, negative: 6 },
+    74→  { week: 'W11', avg: 4.6, negative: 4 },
+    75→  { week: 'W12', avg: 4.5, negative: 5 },
+    76→]
+    77→
+    78→// ---------- derived improvement projects ----------
+    79→// Each project is derived from a negative insight (ri-1, ri-2, ri-3, ri-6).
+    80→type ProjectStatus = 'Proposed' | 'In Progress' | 'Done'
+    81→interface ImprovementProject {
+    82→  id: string
+    83→  title: string
+    84→  fromInsight: string
+    85→  status: ProjectStatus
+    86→  owner: string
+    87→  eta: string
+    88→  impact: string
+    89→  accent: string
+    90→}
+    91→
+    92→const INITIAL_PROJECTS: ImprovementProject[] = [
+    93→  { id: 'pj-1', title: 'Upgrade 2nd-floor Wi-Fi router', fromInsight: 'ri-1', status: 'In Progress', owner: 'Kojo (Tech)', eta: '5 days', impact: '−12 negative mentions', accent: '#9333ea' },
+    94→  { id: 'pj-2', title: 'Audit room 204 cleaning checklist', fromInsight: 'ri-3', status: 'Proposed', owner: 'Unassigned', eta: '—', impact: '+0.7★ cleanliness', accent: '#be123c' },
+    95→  { id: 'pj-3', title: 'Add staff to 2–5 PM check-in peak window', fromInsight: 'ri-6', status: 'Proposed', owner: 'Unassigned', eta: '—', impact: '−6 wait-time mentions', accent: '#ea580c' },
+    96→  { id: 'pj-4', title: 'Review breakfast operations w/ kitchen', fromInsight: 'ri-2', status: 'In Progress', owner: 'Adwoa (F&B)', eta: '3 days', impact: '+0.5★ breakfast', accent: '#b45309' },
+    97→  { id: 'pj-5', title: 'Feature rooftop in couples marketing imagery', fromInsight: 'ri-5', status: 'Done', owner: 'Ama (Marketing)', eta: 'Shipped', impact: '+18 mentions', accent: '#0d9488' },
+    98→  { id: 'pj-6', title: 'Feature airport pickup in confirmations', fromInsight: 'ri-4', status: 'Done', owner: 'Abena (Reception)', eta: 'Shipped', impact: '+19% repeat bookings', accent: '#15803d' },
+    99→]
+   100→
+   101→const STATUS_META: Record<ProjectStatus, { ring: string; chip: string; icon: React.ComponentType<{ className?: string }> }> = {
+   102→  Proposed: { ring: 'border-slate-500/30', chip: 'bg-slate-500/15 text-slate-600 dark:text-slate-300', icon: Clock },
+   103→  'In Progress': { ring: 'border-amber-500/40', chip: 'bg-amber-500/15 text-amber-600 dark:text-amber-400', icon: Loader2 },
+   104→  Done: { ring: 'border-emerald-500/40', chip: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400', icon: CheckCircle2 },
+   105→}
+   106→
+   107→// ---------- components ----------
+   108→
+   109→function TrendPill({ trend }: { trend: number }) {
+   110→  if (trend > 0) {
+   111→    return (
+   112→      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400">
+   113→        <TrendingUp className="h-3 w-3" /> +{trend}%
+   114→      </span>
+   115→    )
+   116→  }
+   117→  if (trend < 0) {
+   118→    return (
+   119→      <span className="inline-flex items-center gap-0.5 rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-rose-600 dark:text-rose-400">
+   120→        <TrendingDown className="h-3 w-3" /> {trend}%
+   121→      </span>
+   122→    )
+   123→  }
+   124→  return (
+   125→    <span className="inline-flex items-center gap-0.5 rounded-full bg-slate-500/15 px-1.5 py-0.5 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+   126→      — 0%
+   127→    </span>
+   128→  )
+   129→}
+   130→
+   131→function InsightCard({ insight, index }: { insight: ReputationInsight; index: number }) {
+   132→  const Icon = TYPE_ICON[insight.type]
+   133→  const isNegative = insight.severity === 'negative'
+   134→  const isPositive = insight.severity === 'positive'
+   135→
+   136→  const handleAction = () => {
+   137→    if (isNegative) {
+   138→      toast.success('Improvement project created', {
+   139→        description: `"${insight.action}" — moved to the project backlog.`,
+   140→      })
+   141→    } else if (isPositive) {
+   142→      toast.success('Amplification campaign queued', {
+   143→        description: `Marketing will feature this strength in upcoming content.`,
+   144→      })
+   145→    }
+   146→  }
+   147→
+   148→  return (
+   149→    <motion.div
+   150→      initial={{ opacity: 0, y: 12 }}
+   151→      animate={{ opacity: 1, y: 0 }}
+   152→      transition={{ duration: 0.32, delay: index * 0.04 }}
+   153→    >
+   154→      <Card className={`relative overflow-hidden p-4 gap-0 border ${SEVERITY_RING[insight.severity]}`}>
+   155→        {/* left accent stripe */}
+   156→        <span
+   157→          className="absolute left-0 top-0 h-full w-1"
+   158→          style={{ backgroundColor: insight.severity === 'positive' ? '#10b981' : insight.severity === 'negative' ? '#f43f5e' : '#64748b' }}
+   159→        />
+   160→        <div className="flex items-start gap-3 pl-2">
+   161→          <div
+   162→            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${SEVERITY_TEXT[insight.severity]}`}
+   163→            style={{
+   164→              backgroundColor:
+   165→                insight.severity === 'positive' ? 'rgba(16,185,129,0.10)'
+   166→                : insight.severity === 'negative' ? 'rgba(244,63,94,0.10)'
+   167→                : 'rgba(100,116,139,0.10)',
+   168→            }}
+   169→          >
+   170→            <Icon className="h-4 w-4" />
+   171→          </div>
+   172→          <div className="min-w-0 flex-1">
+   173→            <div className="flex flex-wrap items-center gap-2">
+   174→              <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${SEVERITY_TEXT[insight.severity]}`}>
+   175→                <span className={`h-1.5 w-1.5 rounded-full ${SEVERITY_DOT[insight.severity]}`} />
+   176→                {TYPE_LABEL[insight.type]}
+   177→              </span>
+   178→              {insight.room && (
+   179→                <Badge variant="outline" className="gap-1 border-amber-500/40 bg-amber-500/10 text-[10px] text-amber-600 dark:text-amber-400">
+   180→                  <BedDouble className="h-3 w-3" /> Room {insight.room}
+   181→                </Badge>
+   182→              )}
+   183→            </div>
+   184→            <h4 className="mt-1 text-sm font-semibold leading-tight">{insight.title}</h4>
+   185→            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{insight.detail}</p>
+   186→
+   187→            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground">
+   188→              <span className="inline-flex items-center gap-1">
+   189→                <MessageSquareQuote className="h-3 w-3" />
+   190→                <span className="font-semibold text-foreground">{insight.mentions}</span> mentions
+   191→              </span>
+   192→              <TrendPill trend={insight.trend} />
+   193→              <span className="inline-flex items-center gap-1">
+   194→                <Star className="h-3 w-3 text-amber-500" />
+   195→                {insight.source}
+   196→              </span>
+   197→            </div>
+   198→
+   199→            <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+   200→              <div className="inline-flex min-w-0 items-center gap-1.5 rounded-md bg-muted/60 px-2 py-1 text-[11px]">
+   201→                <Hammer className="h-3 w-3 text-orange-500" />
+   202→                <span className="truncate text-muted-foreground">Suggested action:</span>
+   203→                <span className="truncate font-medium text-foreground">{insight.action}</span>
+   204→              </div>
+   205→              <Button
+   206→                size="sm"
+   207→                variant={isNegative ? 'default' : 'outline'}
+   208→                onClick={handleAction}
+   209→                className={
+   210→                  isNegative
+   211→                    ? 'h-7 gap-1 bg-rose-500 px-2.5 text-[11px] text-white hover:bg-rose-600'
+   212→                    : isPositive
+   213→                    ? 'h-7 gap-1 border-emerald-500/40 px-2.5 text-[11px] text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400'
+   214→                    : 'h-7 gap-1 px-2.5 text-[11px]'
+   215→                }
+   216→              >
+   217→                {isNegative ? (
+   218→                  <><Hammer className="h-3 w-3" /> Create improvement project</>
+   219→                ) : isPositive ? (
+   220→                  <><Megaphone className="h-3 w-3" /> Amplify</>
+   221→                ) : (
+   222→                  <><Search className="h-3 w-3" /> Investigate</>
+   223→                )}
+   224→              </Button>
+   225→            </div>
+   226→          </div>
+   227→        </div>
+   228→      </Card>
+   229→    </motion.div>
+   230→  )
+   231→}
+   232→
+   233→function InsightsFeed() {
+   234→  const sorted = [...REPUTATION_INSIGHTS].sort((a, b) => {
+   235→    // negatives first (by mentions desc), then positives
+   236→    const sv = (s: ReputationInsight['severity']) => (s === 'negative' ? 0 : s === 'positive' ? 2 : 1)
+   237→    if (sv(a.severity) !== sv(b.severity)) return sv(a.severity) - sv(b.severity)
+   238→    return b.mentions - a.mentions
+   239→  })
+   240→  return (
+   241→    <Card className="flex h-full flex-col gap-0 p-0">
+   242→      <div className="flex items-center justify-between border-b px-5 py-3.5">
+   243→        <div>
+   244→          <h3 className="text-sm font-semibold">Insights feed</h3>
+   245→          <p className="text-[11px] text-muted-foreground">AI-extracted from {REPUTATION_INSIGHTS.reduce((s, i) => s + i.mentions, 0)} review mentions</p>
+   246→        </div>
+   247→        <Badge variant="outline" className="gap-1 border-orange-500/40 text-orange-600 dark:text-orange-400">
+   248→          <Sparkles className="h-3 w-3" /> {sorted.length} live
+   249→        </Badge>
+   250→      </div>
+   251→      <ScrollArea className="max-h-[640px] flex-1 px-4 py-4">
+   252→        <div className="space-y-3">
+   253→          {sorted.map((it, i) => (
+   254→            <InsightCard key={it.id} insight={it} index={i} />
+   255→          ))}
+   256→        </div>
+   257→      </ScrollArea>
+   258→    </Card>
+   259→  )
+   260→}
+   261→
+   262→function TopicRadar() {
+   263→  const sorted = [...REVIEW_TOPICS].sort((a, b) => b.sentiment - a.sentiment)
+   264→  return (
+   265→    <Card className="p-5">
+   266→      <div className="flex items-start justify-between">
+   267→        <div>
+   268→          <h3 className="text-sm font-semibold">Topic sentiment breakdown</h3>
+   269→          <p className="text-[11px] text-muted-foreground">Average rating per topic · sorted high → low</p>
+   270→        </div>
+   271→        <Badge variant="outline" className="gap-1 border-teal-500/40 text-teal-600 dark:text-teal-400">
+   272→          <Activity className="h-3 w-3" /> {REVIEW_TOPICS.length} topics
+   273→        </Badge>
+   274→      </div>
+   275→      <div className="mt-2 h-[240px] w-full">
+   276→        <ResponsiveContainer width="100%" height="100%">
+   277→          <RadarChart data={sorted} outerRadius="78%">
+   278→            <PolarGrid stroke="hsl(var(--border))" strokeOpacity={0.4} />
+   279→            <PolarAngleAxis dataKey="topic" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} />
+   280→            <PolarRadiusAxis angle={90} domain={[0, 5]} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 9 }} stroke="hsl(var(--border))" />
+   281→            <Radar dataKey="sentiment" stroke="#ea580c" fill="#ea580c" fillOpacity={0.35} strokeWidth={2} />
+   282→            <RTooltip
+   283→              contentStyle={{
+   284→                background: 'hsl(var(--card))',
+   285→                border: '1px solid hsl(var(--border))',
+   286→                borderRadius: 10,
+   287→                fontSize: 12,
+   288→              }}
+   289→              formatter={(v: number) => [`${v.toFixed(1)}★`, 'Sentiment']}
+   290→            />
+   291→          </RadarChart>
+   292→        </ResponsiveContainer>
+   293→      </div>
+   294→      <Separator className="my-3" />
+   295→      <div className="space-y-1.5">
+   296→        {sorted.map(t => (
+   297→          <div key={t.topic} className="flex items-center gap-3 text-xs">
+   298→            <span className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: t.color }} />
+   299→            <span className="w-32 shrink-0 truncate font-medium">{t.topic}</span>
+   300→            <div className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+   301→              <div
+   302→                className="absolute inset-y-0 left-0 rounded-full"
+   303→                style={{ width: `${(t.sentiment / 5) * 100}%`, backgroundColor: t.color }}
+   304→              />
+   305→            </div>
+   306→            <span className="w-8 shrink-0 text-right font-semibold tabular-nums">{t.sentiment.toFixed(1)}</span>
+   307→            <span className="w-12 shrink-0">
+   308→              <TrendPill trend={t.trend} />
+   309→            </span>
+   310→          </div>
+   311→        ))}
+   312→      </div>
+   313→    </Card>
+   314→  )
+   315→}
+   316→
+   317→function DecliningTopics() {
+   318→  const declining = [...REVIEW_TOPICS].filter(t => t.trend < 0).sort((a, b) => a.trend - b.trend).slice(0, 3)
+   319→  return (
+   320→    <Card className="p-5">
+   321→      <div className="flex items-center justify-between">
+   322→        <div className="flex items-center gap-2">
+   323→          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400">
+   324→            <TrendingDown className="h-3.5 w-3.5" />
+   325→          </span>
+   326→          <div>
+   327→            <h3 className="text-sm font-semibold">Top declining topics</h3>
+   328→            <p className="text-[11px] text-muted-foreground">One-click investigation</p>
+   329→          </div>
+   330→        </div>
+   331→      </div>
+   332→      <div className="mt-3 space-y-2">
+   333→        {declining.map(t => (
+   334→          <div
+   335→            key={t.topic}
+   336→            className="group flex items-center justify-between rounded-lg border border-rose-500/20 bg-rose-500/[0.03] px-3 py-2 transition-colors hover:bg-rose-500/[0.08]"
+   337→          >
+   338→            <div className="flex min-w-0 items-center gap-2">
+   339→              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: t.color }} />
+   340→              <div className="min-w-0">
+   341→                <p className="truncate text-xs font-semibold">{t.topic}</p>
+   342→                <p className="text-[10px] text-muted-foreground">{t.sentiment.toFixed(1)}★ · {t.mentions} mentions</p>
+   343→              </div>
+   344→            </div>
+   345→            <div className="flex items-center gap-2">
+   346→              <TrendPill trend={t.trend} />
+   347→              <Button
+   348→                size="sm"
+   349→                variant="ghost"
+   350→                onClick={() => toast.info(`Investigating "${t.topic}"`, { description: 'AI is pulling every mention across platforms and drafting a root-cause analysis.' })}
+   351→                className="h-7 gap-1 px-2 text-[11px] text-rose-600 hover:bg-rose-500/10 dark:text-rose-400"
+   352→              >
+   353→                <Microscope className="h-3 w-3" /> Investigate
+   354→              </Button>
+   355→            </div>
+   356→          </div>
+   357→        ))}
+   358→      </div>
+   359→    </Card>
+   360→  )
+   361→}
+   362→
+   363→function RisingTopics() {
+   364→  const rising = [...REVIEW_TOPICS].filter(t => t.trend > 0).sort((a, b) => b.trend - a.trend).slice(0, 3)
+   365→  return (
+   366→    <Card className="p-5">
+   367→      <div className="flex items-center justify-between">
+   368→        <div className="flex items-center gap-2">
+   369→          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+   370→            <TrendingUp className="h-3.5 w-3.5" />
+   371→          </span>
+   372→          <div>
+   373→            <h3 className="text-sm font-semibold">Top rising topics</h3>
+   374→            <p className="text-[11px] text-muted-foreground">Amplify your strengths</p>
+   375→          </div>
+   376→        </div>
+   377→      </div>
+   378→      <div className="mt-3 space-y-2">
+   379→        {rising.map(t => (
+   380→          <div
+   381→            key={t.topic}
+   382→            className="group flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-500/[0.03] px-3 py-2 transition-colors hover:bg-emerald-500/[0.08]"
+   383→          >
+   384→            <div className="flex min-w-0 items-center gap-2">
+   385→              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: t.color }} />
+   386→              <div className="min-w-0">
+   387→                <p className="truncate text-xs font-semibold">{t.topic}</p>
+   388→                <p className="text-[10px] text-muted-foreground">{t.sentiment.toFixed(1)}★ · {t.mentions} mentions</p>
+   389→              </div>
+   390→            </div>
+   391→            <div className="flex items-center gap-2">
+   392→              <TrendPill trend={t.trend} />
+   393→              <Button
+   394→                size="sm"
+   395→                variant="ghost"
+   396→                onClick={() => toast.success(`Amplifying "${t.topic}"`, { description: 'Marketing will feature this in the next campaign cycle.' })}
+   397→                className="h-7 gap-1 px-2 text-[11px] text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
+   398→              >
+   399→                <Megaphone className="h-3 w-3" /> Amplify
+   400→              </Button>
+   401→            </div>
+   402→          </div>
+   403→        ))}
+   404→      </div>
+   405→    </Card>
+   406→  )
+   407→}
+   408→
+   409→function ImprovementProjects() {
+   410→  const [projects, setProjects] = React.useState<ImprovementProject[]>(INITIAL_PROJECTS)
+   411→
+   412→  const advance = (id: string) => {
+   413→    setProjects(prev => prev.map(p => {
+   414→      if (p.id !== id) return p
+   415→      const next: ProjectStatus = p.status === 'Proposed' ? 'In Progress' : p.status === 'In Progress' ? 'Done' : 'Done'
+   416→      return { ...p, status: next, owner: next === 'In Progress' && p.owner === 'Unassigned' ? 'Auto-assigned' : p.owner, eta: next === 'Done' ? 'Shipped' : p.eta }
+   417→    }))
+   418→  }
+   419→
+   420→  const columns: { status: ProjectStatus; title: string; desc: string }[] = [
+   421→    { status: 'Proposed', title: 'Proposed', desc: 'Derived from negative insights' },
+   422→    { status: 'In Progress', title: 'In Progress', desc: 'Actively being fixed' },
+   423→    { status: 'Done', title: 'Done', desc: 'Shipped to production' },
+   424→  ]
+   425→
+   426→  return (
+   427→    <Card className="p-5">
+   428→      <div className="flex flex-wrap items-center justify-between gap-3">
+   429→        <div>
+   430→          <h3 className="text-sm font-semibold">Improvement projects</h3>
+   431→          <p className="text-[11px] text-muted-foreground">
+   432→            Every negative insight becomes an actionable project — feedback doesn&apos;t sit idle.
+   433→          </p>
+   434→        </div>
+   435→        <div className="flex items-center gap-2">
+   436→          <Badge variant="outline" className="gap-1 border-rose-500/40 text-rose-600 dark:text-rose-400">
+   437→            <AlertCircle className="h-3 w-3" /> {projects.filter(p => p.status === 'Proposed').length} proposed
+   438→          </Badge>
+   439→          <Badge variant="outline" className="gap-1 border-amber-500/40 text-amber-600 dark:text-amber-400">
+   440→            <Loader2 className="h-3 w-3" /> {projects.filter(p => p.status === 'In Progress').length} in progress
+   441→          </Badge>
+   442→          <Badge variant="outline" className="gap-1 border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
+   443→            <CheckCircle2 className="h-3 w-3" /> {projects.filter(p => p.status === 'Done').length} done
+   444→          </Badge>
+   445→        </div>
+   446→      </div>
+   447→
+   448→      <div className="mt-4 grid gap-3 md:grid-cols-3">
+   449→        {columns.map(col => {
+   450→          const items = projects.filter(p => p.status === col.status)
+   451→          return (
+   452→            <div key={col.status} className="rounded-xl border border-border/60 bg-muted/20 p-3">
+   453→              <div className="mb-3 flex items-center justify-between px-1">
+   454→                <div className="flex items-center gap-2">
+   455→                  <span className={`flex h-6 w-6 items-center justify-center rounded-md ${STATUS_META[col.status].chip}`}>
+   456→                    {(() => { const Icon = STATUS_META[col.status].icon; return <Icon className="h-3 w-3" /> })()}
+   457→                  </span>
+   458→                  <span className="text-xs font-semibold">{col.title}</span>
+   459→                </div>
+   460→                <span className="text-[10px] text-muted-foreground">{items.length}</span>
+   461→              </div>
+   462→              <div className="space-y-2">
+   463→                <AnimatePresence mode="popLayout">
+   464→                  {items.map(p => {
+   465→                    const Icon = STATUS_META[col.status].icon
+   466→                    return (
+   467→                      <motion.div
+   468→                        key={p.id}
+   469→                        layout
+   470→                        initial={{ opacity: 0, scale: 0.96 }}
+   471→                        animate={{ opacity: 1, scale: 1 }}
+   472→                        exit={{ opacity: 0, scale: 0.96 }}
+   473→                        transition={{ duration: 0.2 }}
+   474→                        className={`rounded-lg border ${STATUS_META[col.status].ring} bg-card p-3 shadow-sm`}
+   475→                      >
+   476→                        <div className="flex items-start justify-between gap-2">
+   477→                          <div className="flex min-w-0 items-center gap-2">
+   478→                            <span
+   479→                              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-white"
+   480→                              style={{ backgroundColor: p.accent }}
+   481→                            >
+   482→                              <Hammer className="h-3.5 w-3.5" />
+   483→                            </span>
+   484→                            <div className="min-w-0">
+   485→                              <p className="truncate text-xs font-semibold leading-tight">{p.title}</p>
+   486→                              <p className="mt-0.5 text-[10px] text-muted-foreground">
+   487→                                from <span className="font-mono">{p.fromInsight}</span>
+   488→                              </p>
+   489→                            </div>
+   490→                          </div>
+   491→                        </div>
+   492→                        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+   493→                          <span className="inline-flex items-center gap-1 rounded-md bg-muted/70 px-1.5 py-0.5 text-muted-foreground">
+   494→                            <ShieldCheck className="h-2.5 w-2.5" /> {p.owner}
+   495→                          </span>
+   496→                          <span className="inline-flex items-center gap-1 rounded-md bg-muted/70 px-1.5 py-0.5 text-muted-foreground">
+   497→                            <Clock className="h-2.5 w-2.5" /> {p.eta}
+   498→                          </span>
+   499→                          <span className="inline-flex items-center gap-1 rounded-md bg-orange-500/10 px-1.5 py-0.5 text-orange-600 dark:text-orange-400">
+   500→                            <ArrowRight className="h-2.5 w-2.5" /> {p.impact}
+   501→                          </span>
+   502→                        </div>
+   503→                        <div className="mt-2 flex items-center justify-between gap-2">
+   504→                          <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${STATUS_META[col.status].chip}`}>
+   505→                            <Icon className="h-2.5 w-2.5" /> {col.status}
+   506→                          </span>
+   507→                          <div className="flex items-center gap-1">
+   508→                            <Button
+   509→                              size="sm"
+   510→                              variant="ghost"
+   511→                              onClick={() => toast.success('Project assigned', { description: `${p.title} → queued for ${p.owner === 'Unassigned' ? 'next available owner' : p.owner}.` })}
+   512→                              className="h-6 gap-1 px-2 text-[10px] text-muted-foreground hover:text-foreground"
+   513→                            >
+   514→                              <Hammer className="h-2.5 w-2.5" /> Assign
+   515→                            </Button>
+   516→                            {col.status !== 'Done' && (
+   517→                              <Button
+   518→                                size="sm"
+   519→                                variant="ghost"
+   520→                                onClick={() => {
+   521→                                  advance(p.id)
+   522→                                  toast.success(col.status === 'Proposed' ? 'Project started' : 'Project shipped', { description: `${p.title} → ${col.status === 'Proposed' ? 'In Progress' : 'Done'}.` })
+   523→                                }}
+   524→                                className="h-6 gap-1 px-2 text-[10px] text-orange-600 hover:bg-orange-500/10 dark:text-orange-400"
+   525→                              >
+   526→                                <ArrowRight className="h-2.5 w-2.5" /> Advance
+   527→                              </Button>
+   528→                            )}
+   529→                          </div>
+   530→                        </div>
+   531→                      </motion.div>
+   532→                    )
+   533→                  })}
+   534→                </AnimatePresence>
+   535→                {items.length === 0 && (
+   536→                  <div className="rounded-lg border border-dashed border-border/60 p-4 text-center text-[10px] text-muted-foreground">
+   537→                    No projects here yet.
+   538→                  </div>
+   539→                )}
+   540→              </div>
+   541→            </div>
+   542→          )
+   543→        })}
+   544→      </div>
+   545→    </Card>
+   546→  )
+   547→}
+   548→
+   549→function SentimentOverTime() {
+   550→  return (
+   551→    <Card className="p-5">
+   552→      <div className="flex flex-wrap items-center justify-between gap-3">
+   553→        <div>
+   554→          <h3 className="text-sm font-semibold">Sentiment over time</h3>
+   555→          <p className="text-[11px] text-muted-foreground">Rolling 12-week review sentiment trend</p>
+   556→        </div>
+   557→        <div className="flex items-center gap-3 text-[11px]">
+   558→          <span className="inline-flex items-center gap-1.5">
+   559→            <span className="h-2 w-3 rounded-sm bg-orange-500" /> Avg rating
+   560→          </span>
+   561→          <span className="inline-flex items-center gap-1.5">
+   562→            <span className="h-2 w-3 rounded-sm bg-rose-500/60" /> Negative mentions
+   563→          </span>
+   564→        </div>
+   565→      </div>
+   566→      <div className="mt-4 h-[260px] w-full">
+   567→        <ResponsiveContainer width="100%" height="100%">
+   568→          <LineChart data={SENTIMENT_OVER_TIME} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+   569→            <defs>
+   570→              <linearGradient id="sentimentGrad" x1="0" y1="0" x2="0" y2="1">
+   571→                <stop offset="0%" stopColor="#ea580c" stopOpacity={0.35} />
+   572→                <stop offset="100%" stopColor="#ea580c" stopOpacity={0} />
+   573→              </linearGradient>
+   574→            </defs>
+   575→            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} vertical={false} />
+   576→            <XAxis dataKey="week" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+   577→            <YAxis domain={[3.5, 5]} tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+   578→            <RTooltip
+   579→              contentStyle={{
+   580→                background: 'hsl(var(--card))',
+   581→                border: '1px solid hsl(var(--border))',
+   582→                borderRadius: 10,
+   583→                fontSize: 12,
+   584→              }}
+   585→            />
+   586→            <ReferenceLine y={4.5} stroke="#10b981" strokeDasharray="4 4" strokeOpacity={0.5} />
+   587→            <Line
+   588→              type="monotone"
+   589→              dataKey="avg"
+   590→              stroke="#ea580c"
+   591→              strokeWidth={2.5}
+   592→              dot={{ r: 3, fill: '#ea580c', strokeWidth: 0 }}
+   593→              activeDot={{ r: 5, fill: '#ea580c', stroke: '#fff', strokeWidth: 2 }}
+   594→              fill="url(#sentimentGrad)"
+   595→            />
+   596→            <Line
+   597→              type="monotone"
+   598→              dataKey="negative"
+   599→              stroke="#f43f5e"
+   600→              strokeWidth={1.5}
+   601→              strokeOpacity={0.6}
+   602→              strokeDasharray="4 3"
+   603→              dot={false}
+   604→            />
+   605→          </LineChart>
+   606→        </ResponsiveContainer>
+   607→      </div>
+   608→      <div className="mt-2 grid grid-cols-3 gap-2 text-[11px]">
+   609→        <div className="rounded-md bg-muted/50 px-3 py-2">
+   610→          <p className="text-muted-foreground">12-week avg</p>
+   611→          <p className="text-base font-bold text-orange-600 dark:text-orange-400">
+   612→            {(SENTIMENT_OVER_TIME.reduce((s, d) => s + d.avg, 0) / SENTIMENT_OVER_TIME.length).toFixed(2)}★
+   613→          </p>
+   614→        </div>
+   615→        <div className="rounded-md bg-muted/50 px-3 py-2">
+   616→          <p className="text-muted-foreground">Peak</p>
+   617→          <p className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+   618→            {Math.max(...SENTIMENT_OVER_TIME.map(d => d.avg)).toFixed(1)}★
+   619→          </p>
+   620→        </div>
+   621→        <div className="rounded-md bg-muted/50 px-3 py-2">
+   622→          <p className="text-muted-foreground">Trend</p>
+   623→          <p className="inline-flex items-center gap-1 text-base font-bold text-emerald-600 dark:text-emerald-400">
+   624→            <TrendingUp className="h-3.5 w-3.5" /> +4.7%
+   625→          </p>
+   626→        </div>
+   627→      </div>
+   628→    </Card>
+   629→  )
+   630→}
+   631→
+   632→// ---------- main module ----------
+   633→
+   634→export function ReputationIntelModule() {
+   635→  const total = REPUTATION_INSIGHTS.length
+   636→  const negatives = REPUTATION_INSIGHTS.filter(i => i.severity === 'negative').length
+   637→  const positives = REPUTATION_INSIGHTS.filter(i => i.severity === 'positive').length
+   638→  const projectsSuggested = REPUTATION_INSIGHTS.filter(i => i.severity === 'negative').length
+   639→
+   640→  return (
+   641→    <TooltipProvider delayDuration={200}>
+   642→      <SonnerToaster richColors closeButton position="bottom-right" />
+   643→      <div className="space-y-5">
+   644→        {/* Header */}
+   645→        <motion.div
+   646→          initial={{ opacity: 0, y: -8 }}
+   647→          animate={{ opacity: 1, y: 0 }}
+   648→          transition={{ duration: 0.4 }}
+   649→          className="relative overflow-hidden rounded-2xl border border-orange-500/20 bg-gradient-to-br from-orange-500/10 via-amber-500/[0.05] to-rose-500/[0.04] p-5"
+   650→        >
+   651→          <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-orange-500/10 blur-3xl" />
+   652→          <div className="absolute right-20 top-10 h-24 w-24 rounded-full bg-amber-500/10 blur-2xl" />
+   653→          <div className="relative flex flex-wrap items-start justify-between gap-4">
+   654→            <div className="max-w-2xl">
+   655→              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-0.5 text-[11px] font-medium text-orange-600 dark:text-orange-400">
+   656→                <Sparkles className="h-3 w-3" /> Reputation Intelligence · V3
+   657→              </div>
+   658→              <h1 className="text-2xl font-bold tracking-tight">Reputation Intelligence</h1>
+   659→              <p className="mt-1 text-sm text-muted-foreground">
+   660→                The AI continuously mines every review for operational improvements — and converts them into projects.
+   661→              </p>
+   662→            </div>
+   663→            <div className="flex items-center gap-2">
+   664→              <div className="rounded-xl border border-border/60 bg-card/70 px-4 py-2 text-center backdrop-blur">
+   665→                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Live avg rating</p>
+   666→                <p className="text-xl font-bold text-amber-500">4.6★</p>
+   667→              </div>
+   668→              <div className="rounded-xl border border-border/60 bg-card/70 px-4 py-2 text-center backdrop-blur">
+   669→                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Reviews mined</p>
+   670→                <p className="text-xl font-bold text-teal-600 dark:text-teal-400">198</p>
+   671→              </div>
+   672→            </div>
+   673→          </div>
+   674→        </motion.div>
+   675→
+   676→        {/* Stats */}
+   677→        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+   678→          <StatCard
+   679→            label="Total insights"
+   680→            value={String(total)}
+   681→            sub="Mined from 198 reviews"
+   682→            icon={<Sparkles className="h-4 w-4" />}
+   683→            accent="brand"
+   684→          />
+   685→          <StatCard
+   686→            label="Negative trends"
+   687→            value={String(negatives)}
+   688→            sub="Becoming improvement projects"
+   689→            icon={<AlertCircle className="h-4 w-4" />}
+   690→            accent="rose"
+   691→            trend={-3}
+   692→          />
+   693→          <StatCard
+   694→            label="Positive highlights"
+   695→            value={String(positives)}
+   696→            sub="Ready to amplify"
+   697→            icon={<ThumbsUp className="h-4 w-4" />}
+   698→            accent="teal"
+   699→            trend={12}
+   700→          />
+   701→          <StatCard
+   702→            label="Improvement projects"
+   703→            value={String(projectsSuggested)}
+   704→            sub="Derived from feedback"
+   705→            icon={<Hammer className="h-4 w-4" />}
+   706→            accent="violet"
+   707→          />
+   708→        </div>
+   709→
+   710→        {/* Declining + Rising topics row */}
+   711→        <div className="grid gap-4 md:grid-cols-2">
+   712→          <DecliningTopics />
+   713→          <RisingTopics />
+   714→        </div>
+   715→
+   716→        {/* Insights feed + Topic radar */}
+   717→        <div className="grid gap-4 lg:grid-cols-[1fr_minmax(360px,420px)]">
+   718→          <InsightsFeed />
+   719→          <div className="space-y-4">
+   720→            <TopicRadar />
+   721→          </div>
+   722→        </div>
+   723→
+   724→        {/* Improvement projects (kanban) */}
+   725→        <ImprovementProjects />
+   726→
+   727→        {/* Sentiment over time */}
+   728→        <SentimentOverTime />
+   729→      </div>
+   730→    </TooltipProvider>
+   731→  )
+   732→}
+   733→

@@ -1,0 +1,391 @@
+     1→// StayPilot AI V3 — Hospitality Intelligence Network data layer.
+     2→// Network effects: every property contributes anonymous intelligence.
+     3→// Reuses V1 (data.ts) + V2 (data-v2.ts).
+     4→import { PROPERTY, GUESTS, RESERVATIONS, ROOMS, REVIEWS, CHANNELS, EXPERIENCES, CORPORATE } from './data'
+     5→
+     6→// ===================== NETWORK INTELLIGENCE =====================
+     7→// Patterns learned from 5,000+ properties on the StayPilot Network.
+     8→export interface NetworkPattern {
+     9→  id: string
+    10→  category: 'demand' | 'pricing' | 'promotions' | 'ota-quality' | 'segments' | 'events' | 'staffing' | 'ancillary'
+    11→  title: string
+    12→  insight: string
+    13→  networkData: string
+    14→  yourData: string
+    15→  recommendation: string
+    16→  confidence: number
+    17→  propertiesContributing: number
+    18→  impact: string
+    19→  icon: string
+    20→}
+    21→
+    22→export const NETWORK_PATTERNS: NetworkPattern[] = [
+    23→  { id: 'np-1', category: 'demand', title: 'East Legon neighborhood demand up 14% this quarter', insight: 'Across 142 StayPilot properties in East Legon, booking inquiries rose 14% QoQ, driven by returning corporate travelers and conference traffic at AICC.', networkData: '+14% inquiries', yourData: '+6% inquiries', recommendation: 'You\'re underperforming the neighborhood — raise visibility on Booking.com and target corporate accounts.', confidence: 89, propertiesContributing: 142, impact: '+₵18,400/qtr', icon: '📈' },
+    24→  { id: 'np-2', category: 'pricing', title: 'Weekend price elasticity is low in your segment', insight: 'Boutique guest houses (3-4★) in Accra show demand drops only 4% for a 10% price increase on weekends — you\'re leaving margin on the table.', networkData: '4% drop / +10% price', yourData: 'No weekend premium', recommendation: 'Add a 12-15% weekend premium Thursday-Sunday.', confidence: 84, propertiesContributing: 318, impact: '+₵2,300/wk', icon: '💰' },
+    25→  { id: 'np-3', category: 'promotions', title: 'Free breakfast outperforms 10% discounts by 34%', insight: 'Network A/B data across 1,240 properties: free breakfast drives 34% more bookings than a 10% discount, at 60% lower cost.', networkData: '+34% bookings vs discount', yourData: 'Using discounts', recommendation: 'Switch weekend offers from 10% off → free breakfast. Save margin, win more bookings.', confidence: 91, propertiesContributing: 1240, impact: '+₵4,100/mo', icon: '🥐' },
+    26→  { id: 'np-4', category: 'ota-quality', title: 'Direct-website guests have 2.3x the LTV of Booking.com guests', insight: 'Across the network, direct-booked guests return 2.3x more often and spend 41% more on experiences than OTA guests.', networkData: '2.3x LTV', yourData: '1.0x LTV (OTA-heavy)', recommendation: 'Double down on direct conversion — every OTA guest moved to direct is worth ₵4,200 more over their lifetime.', confidence: 87, propertiesContributing: 2890, impact: '+₵4,200/guest', icon: '🎯' },
+    27→  { id: 'np-5', category: 'segments', title: 'Digital nomad segment growing 38% YoY in West Africa', insight: 'The digital-nomad segment across West African StayPilot properties grew 38% year-over-year — the fastest-growing segment.', networkData: '+38% YoY', yourData: '9 nomads (11%)', recommendation: 'Build a 30-day nomad package (fast WiFi, workspace, espresso). Network data says nomads stay 4x longer.', confidence: 83, propertiesContributing: 540, impact: '+₵38,000/yr', icon: '💻' },
+    28→  { id: 'np-6', category: 'events', title: 'AICC conference weeks drive 23% occupancy lift', insight: 'When Accra International Conference Center hosts 1,000+ attendee events, nearby properties see a 23% occupancy lift and 31% ADR premium.', networkData: '+23% occ, +31% ADR', yourData: 'Not maximizing', recommendation: 'Auto-boost rates + OTA visibility 7 days before confirmed AICC events.', confidence: 88, propertiesContributing: 96, impact: '+₵14,400/event wk', icon: '🎤' },
+    29→  { id: 'np-7', category: 'staffing', title: 'Optimal housekeeping ratio is 1 staff per 5 rooms', insight: 'Properties with 1 housekeeper per 5 rooms hit 96% on-time turnover vs 78% at 1:8. Your ratio is 1:6.', networkData: '1:5 → 96% on-time', yourData: '1:6 → 82% on-time', recommendation: 'Add 1 part-time housekeeper on peak days. Network data: pays for itself in 11 days.', confidence: 79, propertiesContributing: 410, impact: '+14% on-time', icon: '🧹' },
+    30→  { id: 'np-8', category: 'ancillary', title: 'Airport pickup is the highest-margin ancillary service', insight: 'Airport pickup has 78% margin and increases guest satisfaction by 0.4★. Properties offering it see 19% more repeat bookings.', networkData: '78% margin, +19% repeat', yourData: 'Offering (underused)', recommendation: 'Auto-offer airport pickup in every booking confirmation. Network conversion: 31%.', confidence: 85, propertiesContributing: 1820, impact: '+₵9,600/yr', icon: '🚗' },
+    31→]
+    32→
+    33→export const NETWORK_STATS = {
+    34→  propertiesOnNetwork: 5247,
+    35→  totalBookingsAnalyzed: 4_180_000,
+    36→  countries: 23,
+    37→  cities: 184,
+    38→  insightsGenerated: 14820,
+    39→  yourContributionRank: 'Top 12%',
+    40→  dataPointsShared: 18400,
+    41→}
+    42→
+    43→// ===================== AI BENCHMARKING =====================
+    44→export interface Benchmark {
+    45→  id: string
+    46→  metric: string
+    47→  yourValue: number
+    48→  networkAvg: number
+    49→  networkTop10: number
+    50→  percentile: number
+    51→  unit: string
+    52→  betterIsHigher: boolean
+    53→  insight: string
+    54→  peersCompared: number
+    55→}
+    56→
+    57→export const BENCHMARKS: Benchmark[] = [
+    58→  { id: 'bm-1', metric: 'Repeat booking rate', yourValue: 38, networkAvg: 24, networkTop10: 44, percentile: 92, unit: '%', betterIsHigher: true, insight: 'You\'re in the top 8% for repeat bookings — your loyalty program is working.', peersCompared: 1240 },
+    59→  { id: 'bm-2', metric: 'Direct booking share', yourValue: 41, networkAvg: 29, networkTop10: 52, percentile: 78, unit: '%', betterIsHigher: true, insight: 'Strong direct share. Top 10% hit 52% — room to grow with your booking engine.', peersCompared: 1240 },
+    60→  { id: 'bm-3', metric: 'Weekend ADR premium', yourValue: 0, networkAvg: 12, networkTop10: 22, percentile: 18, unit: '%', betterIsHigher: true, insight: 'You charge no weekend premium. Similar properties charge 12% more on weekends.', peersCompared: 980 },
+    61→  { id: 'bm-4', metric: 'Occupancy', yourValue: 72, networkAvg: 68, networkTop10: 84, percentile: 64, unit: '%', betterIsHigher: true, insight: 'Above average, but top 10% hit 84%. Your Friday gaps are the drag.', peersCompared: 1240 },
+    62→  { id: 'bm-5', metric: 'OTA commission paid', yourValue: 15, networkAvg: 16, networkTop10: 8, percentile: 58, unit: '%', betterIsHigher: false, insight: 'Average. Top performers pay only 8% — direct conversion is how they do it.', peersCompared: 1240 },
+    63→  { id: 'bm-6', metric: 'Avg review rating', yourValue: 4.4, networkAvg: 4.2, networkTop10: 4.7, percentile: 71, unit: '★', betterIsHigher: true, insight: 'Above average. Recover the 2 dropped reviews to reach top 10%.', peersCompared: 2100 },
+    64→  { id: 'bm-7', metric: 'Response time (inquiries)', yourValue: 12, networkAvg: 38, networkTop10: 4, percentile: 88, unit: 'min', betterIsHigher: false, insight: 'You respond in 12 min vs 38 min network avg — top 12%. AI concierge helps.', peersCompared: 1820 },
+    65→  { id: 'bm-8', metric: 'Cancellation rate', yourValue: 8, networkAvg: 11, networkTop10: 4, percentile: 74, unit: '%', betterIsHigher: false, insight: 'Below-average cancellations. Tighten Booking.com policy to reach top 10%.', peersCompared: 1240 },
+    66→  { id: 'bm-9', metric: 'Revenue per guest (ancillary)', yourValue: 180, networkAvg: 240, networkTop10: 520, unit: '₵', percentile: 42, betterIsHigher: true, insight: 'Underweight on ancillary spend. Properties like yours earn 33% more from experiences.', peersCompared: 980 },
+    67→  { id: 'bm-10', metric: 'RevPAR', yourValue: 612, networkAvg: 540, networkTop10: 820, percentile: 68, unit: '₵', betterIsHigher: true, insight: 'Above average. Closing your weekend-premium gap would push you to top 20%.', peersCompared: 1240 },
+    68→]
+    69→
+    70→export const BENCHMARK_INSIGHTS = [
+    71→  { id: 'bi-1', text: 'You are in the top 8% for repeat bookings.', icon: '🏆', tone: 'success' },
+    72→  { id: 'bi-2', text: 'Properties like yours charge 12% more on weekends.', icon: '💰', tone: 'warning' },
+    73→  { id: 'bi-3', text: 'Similar guest houses increased occupancy by 9% after introducing airport transfers.', icon: '🚗', tone: 'info' },
+    74→  { id: 'bi-4', text: 'Boutique hotels with your review score average a 78% direct booking rate.', icon: '🎯', tone: 'info' },
+    75→  { id: 'bi-5', text: 'Top 10% properties pay only 8% OTA commission — you pay 15%.', icon: '📉', tone: 'warning' },
+    76→  { id: 'bi-6', text: 'Your response time (12 min) beats 88% of the network.', icon: '⚡', tone: 'success' },
+    77→]
+    78→
+    79→// ===================== HOSPITALITY AI MARKETPLACE =====================
+    80→// Third-party AI capabilities (distinct from V2's service marketplace)
+    81→export interface AICapability {
+    82→  id: string
+    83→  name: string
+    84→  developer: string
+    85→  category: string
+    86→  description: string
+    87→  rating: number
+    88→  installs: number
+    89→  price: string
+    90→  installed: boolean
+    91→  verified: boolean
+    92→  icon: string
+    93→  color: string
+    94→  capabilities: string[]
+    95→}
+    96→
+    97→export const AI_CAPABILITIES: AICapability[] = [
+    98→  { id: 'ac-1', name: 'RevMax Pricing Engine', developer: 'PricingLabs', category: 'Revenue Optimization', description: 'ML dynamic-pricing agent using competitor rates, events, weather, and booking pace. Auto-adjusts nightly.', rating: 4.8, installs: 1820, price: '₵420/mo', installed: true, verified: true, icon: '💰', color: '#ea580c', capabilities: ['Competitor tracking', 'Event-aware pricing', 'Pace analysis', 'Weather signals'] },
+    99→  { id: 'ac-2', name: 'LocalTour Concierge', developer: 'WanderGuide', category: 'Tour Recommendations', description: 'Recommends personalized tours to guests based on preferences, season, and reviews. Auto-books with partners.', rating: 4.7, installs: 940, price: '15% per booking', installed: true, verified: true, icon: '🗺️', color: '#15803d', capabilities: ['Preference matching', 'Auto-booking', 'Partner payouts', 'Review mining'] },
+   100→  { id: 'ac-3', name: 'DineBot', developer: 'FoodFleet AI', category: 'Restaurant Recommendations', description: 'Recommends nearby restaurants by cuisine, budget, and guest mood. Integrates with in-room dining.', rating: 4.5, installs: 610, price: 'Free', installed: false, verified: true, icon: '🍽️', color: '#be123c', capabilities: ['Cuisine matching', 'Real-time availability', 'In-room dining sync'] },
+   101→  { id: 'ac-4', name: 'CleanRoute Optimizer', developer: 'OpsMind', category: 'Housekeeping Optimization', description: 'Optimizes cleaning routes by room location, turnover priority, and staff skills. Cuts turnover time 22%.', rating: 4.6, installs: 720, price: '₵180/mo', installed: false, verified: true, icon: '🧹', color: '#0d9488', capabilities: ['Route optimization', 'Priority queueing', 'Skill matching', 'Time tracking'] },
+   102→  { id: 'ac-5', name: 'FraudGuard', developer: 'SecureStay', category: 'Fraud Detection', description: 'Detects fraudulent bookings, chargeback risk, and fake reviews in real time. Network-trained.', rating: 4.9, installs: 1240, price: '₵320/mo', installed: false, verified: true, icon: '🛡️', color: '#9333ea', capabilities: ['Chargeback prediction', 'Fake review detection', 'Card testing alerts', 'Identity verification'] },
+   103→  { id: 'ac-6', name: 'CommPack: Luxury Boutique', developer: 'StayPilot Labs', category: 'Communication Packs', description: 'Pre-trained guest communication templates in luxury-boutique brand voice. WhatsApp, email, SMS.', rating: 4.7, installs: 410, price: '₵90/mo', installed: true, verified: true, icon: '💬', color: '#b45309', capabilities: ['Brand-voice templates', 'Multi-channel', 'Tone matching', 'A/B tested'] },
+   104→  { id: 'ac-7', name: 'EventRadar', developer: 'CityPulse', category: 'Demand Forecasting', description: 'Monitors local events, conferences, and festivals. Auto-triggers rate + visibility boosts.', rating: 4.8, installs: 880, price: '₵240/mo', installed: false, verified: true, icon: '🎤', color: '#c2410c', capabilities: ['Event detection', 'Demand forecasting', 'Auto-pricing', 'Competitor sellout alerts'] },
+   105→  { id: 'ac-8', name: 'AutoTemplate: Corporate Sales', developer: 'StayPilot Labs', category: 'Automation Templates', description: 'End-to-end corporate sales automation: prospecting, contract generation, rate negotiation, renewal.', rating: 4.6, installs: 320, price: '₵360/mo', installed: false, verified: false, icon: '🏢', color: '#0e7490', capabilities: ['Prospect lists', 'Contract templates', 'Renewal reminders', 'Rate optimization'] },
+   106→]
+   107→
+   108→export const AI_MARKETPLACE_CATEGORIES = ['Revenue Optimization', 'Tour Recommendations', 'Restaurant Recommendations', 'Housekeeping Optimization', 'Fraud Detection', 'Communication Packs', 'Demand Forecasting', 'Automation Templates']
+   109→
+   110→// ===================== PROPERTY AI TRAINING (HOSPITALITY BRAIN) =====================
+   111→export interface BrainConfig {
+   112→  category: string
+   113→  label: string
+   114→  value: string
+   115→  options: string[]
+   116→  learned: boolean
+   117→  examples?: string[]
+   118→}
+   119→
+   120→export const PROPERTY_BRAIN: BrainConfig[] = [
+   121→  { category: 'brand-voice', label: 'Brand Voice', value: 'Warm, professional, Ghanaian hospitality ("Akwaaba")', options: ['Warm & casual', 'Professional & formal', 'Luxury & refined', 'Playful & modern'], learned: true, examples: ['"Akwaaba! We can\'t wait to host you."', '"Thank you for choosing us — your room is ready."'] },
+   122→  { category: 'discount-policy', label: 'Discount Policy', value: 'Max 20% off, never below cost; prefer perks over discounts', options: ['Aggressive (up to 30%)', 'Moderate (up to 20%)', 'Conservative (up to 10%)', 'Perks over discounts'], learned: true },
+   123→  { category: 'upgrade-policy', label: 'Upgrade Policy', value: 'Free upgrades for VIPs & repeat guests when suites are empty', options: ['Never free', 'VIPs only', 'VIPs + repeat guests', 'Aggressive upsell'], learned: true },
+   124→  { category: 'service-style', label: 'Service Style', value: 'Personal & attentive — know guests by name, anticipate needs', options: ['Hands-off / self-service', 'Friendly & available', 'Personal & attentive', 'White-glove luxury'], learned: true },
+   125→  { category: 'local-recs', label: 'Local Recommendations', value: 'Curated: Buka (dining), Cape Coast (tour), Labadi (beach)', options: [], learned: true, examples: ['Buka Restaurant — best local cuisine', 'Cape Coast Castle — must-see tour', 'Labadi Beach — weekend vibe'] },
+   126→  { category: 'suppliers', label: 'Preferred Suppliers', value: 'SparkleClean (cleaning), AkwaabaTransfers (airport), GoldCoast (tours)', options: [], learned: true },
+   127→  { category: 'escalation', label: 'Escalation Rules', value: 'Complaints → manager in 5 min; refunds >₵500 → owner; maintenance → ops lead', options: [], learned: true },
+   128→  { category: 'response-speed', label: 'Response Speed Target', value: 'Under 15 minutes, 24/7 (AI handles off-hours)', options: ['Under 1 hr', 'Under 30 min', 'Under 15 min', 'Under 5 min'], learned: true },
+   129→]
+   130→
+   131→export const BRAIN_LEARNING_PROGRESS = {
+   132→  overall: 78,
+   133→  byArea: [
+   134→    { area: 'Brand Voice', progress: 92, samples: 1240 },
+   135→    { area: 'Guest Preferences', progress: 84, samples: 890 },
+   136→    { area: 'Pricing Patterns', progress: 71, samples: 540 },
+   137→    { area: 'Local Knowledge', progress: 88, samples: 320 },
+   138→    { area: 'Service Recovery', progress: 64, samples: 180 },
+   139→    { area: 'Operational Routines', progress: 76, samples: 410 },
+   140→  ],
+   141→  recentLearnings: [
+   142→    { id: 'rl-1', learning: 'You prefer to offer free breakfast over discounts on weekends', confidence: 94, date: '2h ago' },
+   143→    { id: 'rl-2', learning: 'Your VIP guests always get Room 101 or 303', confidence: 91, date: '5h ago' },
+   144→    { id: 'rl-3', learning: 'You escalate AC complaints to Tech Kojo first', confidence: 88, date: '1d ago' },
+   145→    { id: 'rl-4', learning: 'You waive first-night for repeat guests on complaints', confidence: 82, date: '2d ago' },
+   146→    { id: 'rl-5', learning: 'Your busiest check-in window is 2-5 PM', confidence: 96, date: '3d ago' },
+   147→  ],
+   148→}
+   149→
+   150→// ===================== REPUTATION INTELLIGENCE =====================
+   151→export interface ReputationInsight {
+   152→  id: string
+   153→  type: 'trend-up' | 'trend-down' | 'recurring-positive' | 'recurring-negative' | 'room-specific' | 'service-highlight'
+   154→  title: string
+   155→  detail: string
+   156→  mentions: number
+   157→  trend: number
+   158→  source: string
+   159→  action: string
+   160→  severity: 'positive' | 'neutral' | 'negative'
+   161→  room?: string
+   162→}
+   163→
+   164→export const REPUTATION_INSIGHTS: ReputationInsight[] = [
+   165→  { id: 'ri-1', type: 'recurring-negative', title: 'Guests frequently mention slow Wi-Fi', detail: '12 reviews in 60 days mention slow or unreliable Wi-Fi, concentrated in rooms on the 2nd floor. Trending up 40%.', mentions: 12, trend: 40, source: 'Google + Booking.com', action: 'Upgrade 2nd-floor router / add access point', severity: 'negative' },
+   166→  { id: 'ri-2', type: 'trend-down', title: 'Breakfast ratings declined this month', detail: 'Breakfast-specific sentiment dropped from 4.6★ to 4.1★ over 30 days. Guests mention "less variety" and "cold items".', mentions: 8, trend: -12, source: 'Booking.com', action: 'Review breakfast operations with kitchen staff', severity: 'negative' },
+   167→  { id: 'ri-3', type: 'room-specific', title: 'Room 204 receives lower cleanliness scores', detail: 'Room 204 averages 3.8★ on cleanliness vs 4.5★ property average. 5 reviews in 60 days flag "hair on towels" or "dusty surfaces".', mentions: 5, trend: -8, source: 'Multiple platforms', action: 'Audit room 204 cleaning checklist + retrain housekeeper', severity: 'negative', room: '204' },
+   168→  { id: 'ri-4', type: 'service-highlight', title: 'Airport pickup is your highest-rated service', detail: 'Airport pickup has a 4.9★ average across 34 mentions. Guests call it "seamless" and "the best start to the trip".', mentions: 34, trend: 22, source: 'Google + Airbnb', action: 'Feature airport pickup prominently in booking confirmations', severity: 'positive' },
+   169→  { id: 'ri-5', type: 'recurring-positive', title: 'Couples consistently mention your rooftop', detail: '18 reviews from couples mention the rooftop terrace — "sunset views", "romantic", "perfect for drinks". Top differentiator.', mentions: 18, trend: 15, source: 'Airbnb + TripAdvisor', action: 'Add rooftop to marketing imagery + couples package', severity: 'positive' },
+   170→  { id: 'ri-6', type: 'recurring-negative', title: 'Check-in wait times flagged 6 times', detail: '6 reviews mention waiting 20+ minutes at check-in, especially during 2-5 PM peak. One guest downgraded to 2★.', mentions: 6, trend: 18, source: 'Booking.com + Google', action: 'Add mobile check-in + staff peak window', severity: 'negative' },
+   171→  { id: 'ri-7', type: 'trend-up', title: 'Staff friendliness praised more often', detail: 'Mentions of "friendly staff" up 28% this quarter — correlates with your concierge training in May.', mentions: 22, trend: 28, source: 'All platforms', action: 'Recognize staff; keep the training cadence', severity: 'positive' },
+   172→]
+   173→
+   174→export const REVIEW_TOPICS = [
+   175→  { topic: 'Cleanliness', sentiment: 4.3, mentions: 48, trend: -3, color: '#0d9488' },
+   176→  { topic: 'Staff Friendliness', sentiment: 4.8, mentions: 42, trend: 28, color: '#15803d' },
+   177→  { topic: 'Location', sentiment: 4.7, mentions: 38, trend: 4, color: '#b45309' },
+   178→  { topic: 'Breakfast', sentiment: 4.1, mentions: 31, trend: -12, color: '#be123c' },
+   179→  { topic: 'Wi-Fi', sentiment: 3.4, mentions: 26, trend: -18, color: '#9333ea' },
+   180→  { topic: 'Value', sentiment: 4.4, mentions: 24, trend: 6, color: '#ea580c' },
+   181→  { topic: 'Room Comfort', sentiment: 4.3, mentions: 22, trend: 2, color: '#0e7490' },
+   182→  { topic: 'Check-in', sentiment: 3.9, mentions: 18, trend: -8, color: '#a16207' },
+   183→]
+   184→
+   185→// ===================== GUEST LIFETIME NETWORK =====================
+   186→export interface NetworkGuest {
+   187→  id: string
+   188→  name: string
+   189→  homeCity: string
+   190→  otherPropertiesVisited: number
+   191→  totalNetworkSpend: number
+   192→  travelPattern: string
+   193→  preferredDestinations: string[]
+   194→  bookingWindow: string
+   195→  budgetRange: string
+   196→  loyaltyTier: string
+   197→  crossPropertyReferrals: number
+   198→  consent: boolean
+   199→  avatarColor: string
+   200→}
+   201→
+   202→export const NETWORK_GUESTS: NetworkGuest[] = [
+   203→  { id: 'ng-1', name: 'David Kumar', homeCity: 'Lagos', otherPropertiesVisited: 2, totalNetworkSpend: 38400, travelPattern: 'Business quarterly', preferredDestinations: ['Accra', 'Abidjan', 'Nairobi'], bookingWindow: '7-14 days', budgetRange: '₵900-1,400/night', loyaltyTier: 'VIP', crossPropertyReferrals: 3, consent: true, avatarColor: '#0d9488' },
+   204→  { id: 'ng-2', name: 'Aisha Mensah', homeCity: 'London', otherPropertiesVisited: 3, totalNetworkSpend: 42100, travelPattern: 'Leisure bi-annual', preferredDestinations: ['Accra', 'Cape Town', 'Zanzibar'], bookingWindow: '30-60 days', budgetRange: '₵1,200-2,200/night', loyaltyTier: 'VIP', crossPropertyReferrals: 5, consent: true, avatarColor: '#be123c' },
+   205→  { id: 'ng-3', name: 'Chen Wei', homeCity: 'Shanghai', otherPropertiesVisited: 1, totalNetworkSpend: 18900, travelPattern: 'Business monthly', preferredDestinations: ['Accra', 'Dubai'], bookingWindow: '3-7 days', budgetRange: '₵700-1,100/night', loyaltyTier: 'Gold', crossPropertyReferrals: 1, consent: true, avatarColor: '#9333ea' },
+   206→  { id: 'ng-4', name: 'Sarah Johnson', homeCity: 'New York', otherPropertiesVisited: 4, totalNetworkSpend: 56800, travelPattern: 'Leisure annual + business', preferredDestinations: ['Accra', 'Marrakech', 'Lisbon', 'Mexico City'], bookingWindow: '45-90 days', budgetRange: '₵1,500-3,200/night', loyaltyTier: 'VIP', crossPropertyReferrals: 8, consent: true, avatarColor: '#b45309' },
+   207→  { id: 'ng-5', name: 'Marcus Brown', homeCity: 'Atlanta', otherPropertiesVisited: 2, totalNetworkSpend: 24300, travelPattern: 'Leisure annual', preferredDestinations: ['Accra', 'Cape Coast'], bookingWindow: '60-120 days', budgetRange: '₵800-1,400/night', loyaltyTier: 'Gold', crossPropertyReferrals: 2, consent: true, avatarColor: '#15803d' },
+   208→]
+   209→
+   210→export const CROSS_PROPERTY_REFERRALS = [
+   211→  { id: 'cr-1', guest: 'Sarah Johnson', fromProperty: 'Akwaaba Boutique Lodge', toProperty: 'Coconut Bay Boutique (Cape Coast)', date: '14 days ago', revenue: 8400, commission: 0 },
+   212→  { id: 'cr-2', guest: 'David Kumar', fromProperty: 'Akwaaba Boutique Lodge', toProperty: 'Volta Lakeside Lodge', date: '32 days ago', revenue: 5600, commission: 0 },
+   213→  { id: 'cr-3', guest: 'Aisha Mensah', fromProperty: 'Coconut Bay Boutique', toProperty: 'Akwaaba Boutique Lodge', date: '48 days ago', revenue: 7200, commission: 0 },
+   214→  { id: 'cr-4', guest: 'Marcus Brown', fromProperty: 'Akwaaba Boutique Lodge', toProperty: 'Sahara Desert Camp', date: '62 days ago', revenue: 4800, commission: 0 },
+   215→]
+   216→
+   217→export const NETWORK_LOYALTY = {
+   218→  members: 184000,
+   219→  sharedPoints: true,
+   220→  redemptionAcrossNetwork: true,
+   221→  yourMembers: 64,
+   222→  networkAvgMemberValue: 28400,
+   223→  yourMemberValue: 31200,
+   224→}
+   225→
+   226→// ===================== STAFF OS (ROLE-BASED WORKSPACES) =====================
+   227→export interface StaffRole {
+   228→  id: string
+   229→  role: string
+   230→  icon: string
+   231→  user: string
+   232→  color: string
+   233→  priorities: string[]
+   234→}
+   235→
+   236→export const STAFF_ROLES: StaffRole[] = [
+   237→  { id: 'reception', role: 'Reception', icon: '🛎️', user: 'Abena', color: '#0d9488', priorities: ['Today\'s arrivals', 'VIP guests', 'Upsell opportunities', 'Check-in priorities'] },
+   238→  { id: 'housekeeping', role: 'Housekeeping', icon: '🧹', user: 'Akua', color: '#15803d', priorities: ['Cleaning route optimization', 'Room priorities', 'Maintenance alerts'] },
+   239→  { id: 'marketing', role: 'Marketing', icon: '📣', user: 'Ama', color: '#be123c', priorities: ['Campaigns requiring approval', 'Segments with highest booking probability'] },
+   240→  { id: 'maintenance', role: 'Maintenance', icon: '🔧', user: 'Kojo', color: '#b45309', priorities: ['Predictive maintenance schedule', 'Parts inventory', 'Work orders'] },
+   241→  { id: 'finance', role: 'Finance', icon: '🏦', user: 'Efua', color: '#9333ea', priorities: ['Revenue forecasts', 'Cash flow', 'Commission analysis'] },
+   242→]
+   243→
+   244→export const STAFF_TASKS: Record<string, Array<{ id: string; title: string; detail: string; priority: 'High' | 'Medium' | 'Low'; time: string; done: boolean }>> = {
+   245→  reception: [
+   246→    { id: 'st-r1', title: 'VIP arrival: David Kumar (Room 101)', detail: 'CEO of MTN Ghana. Prefers ground floor. Airport pickup confirmed 3:20 PM. Upgrade to deluxe at no charge.', priority: 'High', time: '3:20 PM', done: false },
+   247→    { id: 'st-r2', title: 'Check-in: Aisha Mensah (Suite 201)', detail: 'Returning VIP. Anniversary stay — prepare complimentary champagne. Late checkout pre-approved.', priority: 'High', time: '4:00 PM', done: false },
+   248→    { id: 'st-r3', title: 'Upsell: Cape Coast tour to 3 check-ins', detail: 'AI flagged 3 arrivals matching the tour profile. Offer at check-in — 33% historic uptake.', priority: 'Medium', time: 'All day', done: false },
+   249→    { id: 'st-r4', title: '5 arrivals between 2-5 PM (peak)', detail: 'Add 1 staff to front desk. Mobile check-in links sent to all 5.', priority: 'Medium', time: '2-5 PM', done: true },
+   250→    { id: 'st-r5', title: 'Process 2 walk-in inquiries', detail: '2 walk-ins expected based on street traffic pattern.', priority: 'Low', time: 'Evening', done: false },
+   251→  ],
+   252→  housekeeping: [
+   253→    { id: 'st-h1', title: 'Route optimized: 7 rooms in order', detail: 'AI route: 101 → 104 → 203 → 302 → 201 → 202 → 303. Saves 38 min vs manual. Priority checkouts first.', priority: 'High', time: '9:00 AM', done: false },
+   254→    { id: 'st-h2', title: 'Priority: Room 204 deep clean', detail: 'Lower cleanliness scores flagged. Full deep clean + inspection by supervisor Adwoa.', priority: 'High', time: '11:00 AM', done: false },
+   255→    { id: 'st-h3', title: 'Maintenance alert: Room 102 AC', detail: 'Tech Kojo repairing AC. Do not start cleaning until 12:30 PM.', priority: 'Medium', time: '12:30 PM', done: false },
+   256→    { id: 'st-h4', title: 'Penthouse turnover (Room 303)', detail: 'VIP checkout. Full restock + terrace clean. Allow 90 min.', priority: 'High', time: '1:00 PM', done: false },
+   257→    { id: 'st-h5', title: 'Lost & found: phone charger in 202', detail: 'Log + store at reception.', priority: 'Low', time: '3:00 PM', done: true },
+   258→  ],
+   259→  marketing: [
+   260→    { id: 'st-m1', title: 'Approve: "Weekend Flash Sale" WhatsApp campaign', detail: 'AI drafted. 48 recipients, 20% off. Expected +6 bookings. Sent needs your approval.', priority: 'High', time: 'ASAP', done: false },
+   261→    { id: 'st-m2', title: 'High-probability segment: Lapsed VIPs', detail: '18 lapsed VIPs have 71% booking probability this month. AI recommends Loyalty Reboot (25% off).', priority: 'High', time: 'Today', done: false },
+   262→    { id: 'st-m3', title: 'Schedule Instagram story for 5 PM', detail: 'Rooftop sunset content (your top differentiator). Auto-generated caption ready.', priority: 'Medium', time: '5:00 PM', done: false },
+   263→    { id: 'st-m4', title: 'Review: corporate Q4 email performance', detail: '5 conversions / ₵28,750 revenue so far. Open rate 82%. Consider follow-up to non-openers.', priority: 'Medium', time: 'This week', done: false },
+   264→  ],
+   265→  maintenance: [
+   266→    { id: 'st-mt1', title: 'Predictive: Room 303 jacuzzi seal (in 12 days)', detail: 'AI predicts seal failure based on usage + age. Schedule preventive replacement before leak.', priority: 'High', time: 'In 12 days', done: false },
+   267→    { id: 'st-mt2', title: 'Work order: Room 102 AC noise', detail: 'Guest complaint + review mention. Fan motor replacement. Parts in stock.', priority: 'High', time: 'Today', done: false },
+   268→    { id: 'st-mt3', title: 'Parts inventory: AC motors low', detail: '2 units left. Reorder threshold 3. Auto-PO drafted to supplier.', priority: 'Medium', time: 'This week', done: false },
+   269→    { id: 'st-mt4', title: 'Inspection: 2nd-floor Wi-Fi routers', detail: 'Review insight flagged slow Wi-Fi. Test signal + plan access point install.', priority: 'Medium', time: 'This week', done: false },
+   270→    { id: 'st-mt5', title: 'Completed: Room 104 shower drain', detail: 'Resolved 3 days ago. Guest confirmed fix.', priority: 'Low', time: 'Done', done: true },
+   271→  ],
+   272→  finance: [
+   273→    { id: 'st-f1', title: 'Revenue forecast: ₵78,400 next week', detail: 'Confidence 84%. Friday gap is the swing factor. Approve flash sale to close it.', priority: 'High', time: 'Today', done: false },
+   274→    { id: 'st-f2', title: 'Cash flow: ₵142K net next 30 days', detail: 'Healthy. OTA payouts lag 7 days — factor into payroll timing.', priority: 'Medium', time: 'This week', done: false },
+   275→    { id: 'st-f3', title: 'Commission analysis: Booking.com ₵15,900 MTD', detail: 'Highest commission payer. 41 bookings. Consider direct-conversion push for repeat guests.', priority: 'High', time: 'This week', done: false },
+   276→    { id: 'st-f4', title: 'Reconcile: 3 OTA payouts pending', detail: 'Airbnb ₵4,200, Booking.com ₵8,100, Expedia ₵1,800. Verify against reservations.', priority: 'Medium', time: 'Today', done: false },
+   277→    { id: 'st-f5', title: 'Embedded financing offer: ₵120K', detail: 'Based on 6-month cash flow, PaySwap offers ₵120K for property improvements at 9.5% APR.', priority: 'Low', time: 'Review', done: false },
+   278→  ],
+   279→}
+   280→
+   281→// ===================== EVENT-DRIVEN DATA PLATFORM =====================
+   282→export interface PlatformEvent {
+   283→  id: string
+   284→  type: string
+   285→  payload: string
+   286→  timestamp: string
+   287→  triggeredAutomations: string[]
+   288→  source: string
+   289→}
+   290→
+   291→export const EVENT_TYPES = [
+   292→  { type: 'GuestBooked', icon: '📅', color: '#0d9488', description: 'A new reservation is created', subscribers: 8 },
+   293→  { type: 'GuestCancelled', icon: '❌', color: '#be123c', description: 'A reservation is cancelled', subscribers: 5 },
+   294→  { type: 'GuestCheckedIn', icon: '🔑', color: '#15803d', description: 'Guest arrives and checks in', subscribers: 6 },
+   295→  { type: 'GuestCheckedOut', icon: '🚪', color: '#b45309', description: 'Guest departs', subscribers: 7 },
+   296→  { type: 'ReviewReceived', icon: '⭐', color: '#a16207', description: 'A new review is posted on any platform', subscribers: 4 },
+   297→  { type: 'CampaignLaunched', icon: '📣', color: '#be123c', description: 'A marketing campaign goes live', subscribers: 3 },
+   298→  { type: 'OpportunityDetected', icon: '✨', color: '#9333ea', description: 'AI identifies a revenue opportunity', subscribers: 5 },
+   299→  { type: 'PriceChanged', icon: '💰', color: '#ea580c', description: 'A room rate is adjusted (manual or AI)', subscribers: 4 },
+   300→  { type: 'RoomUnavailable', icon: '🚧', color: '#6b7280', description: 'A room goes out of service', subscribers: 3 },
+   301→  { type: 'MaintenanceCompleted', icon: '🔧', color: '#0e7490', description: 'A maintenance issue is resolved', subscribers: 3 },
+   302→]
+   303→
+   304→export const EVENT_STREAM: PlatformEvent[] = [
+   305→  { id: 'ev-1', type: 'GuestBooked', payload: 'David Kumar → Room 101 (₵1,350 × 3 nights)', timestamp: '2 min ago', triggeredAutomations: ['Send welcome email', 'Pre-assign Room 101', 'Notify housekeeping VIP prep', 'Trigger airport pickup offer'], source: 'Direct Website' },
+   306→  { id: 'ev-2', type: 'OpportunityDetected', payload: '12 previous guests likely to book next weekend (₵22,200 potential)', timestamp: '8 min ago', triggeredAutomations: ['Create "Fill Weekend" mission', 'Draft WhatsApp campaign', 'Notify CRM Manager agent'], source: 'AI Revenue Director' },
+   307→  { id: 'ev-3', type: 'ReviewReceived', payload: '4★ Google review from Sarah Johnson', timestamp: '23 min ago', triggeredAutomations: ['Sentiment analysis', 'Draft AI reply', 'Add to reputation insights', 'Update guest timeline'], source: 'Google' },
+   308→  { id: 'ev-4', type: 'PriceChanged', payload: 'Booking.com rates reduced 7% for Fri-Sun (auto)', timestamp: '1h ago', triggeredAutomations: ['Sync to all OTAs', 'Log to revenue ledger', 'Notify Revenue Director'], source: 'AI Pricing Analyst' },
+   309→  { id: 'ev-5', type: 'GuestCheckedOut', payload: 'Fatima Müller checked out of Room 104', timestamp: '1h ago', triggeredAutomations: ['Trigger housekeeping turnover', 'Send thank-you email', 'Add loyalty points', 'Offer direct-booking coupon'], source: 'Reception' },
+   310→  { id: 'ev-6', type: 'CampaignLaunched', payload: '"Weekend Flash Sale" WhatsApp → 48 guests', timestamp: '1h ago', triggeredAutomations: ['Track opens/clicks', 'Schedule Friday follow-up', 'Notify Marketing Director'], source: 'AI Marketing Director' },
+   311→  { id: 'ev-7', type: 'RoomUnavailable', payload: 'Room 102 → Maintenance (AC repair)', timestamp: '2h ago', triggeredAutomations: ['Block calendar', 'Reassign pending bookings', 'Notify housekeeping', 'Create work order'], source: 'Maintenance' },
+   312→  { id: 'ev-8', type: 'GuestCancelled', payload: 'Booking #1094 cancelled (Expedia, ₵1,800)', timestamp: '3h ago', triggeredAutomations: ['Free inventory', 'Trigger vacancy engine', 'Recalculate occupancy forecast', 'Process refund via PaySwap'], source: 'Expedia' },
+   313→]
+   314→
+   315→export const AUTOMATIONS = [
+   316→  { id: 'au-1', name: 'Welcome email + local guide', trigger: 'GuestBooked', enabled: true, runs: 1240, avgTime: '8s' },
+   317→  { id: 'au-2', name: 'Housekeeping VIP prep', trigger: 'GuestBooked', enabled: true, runs: 320, avgTime: '2s' },
+   318→  { id: 'au-3', name: 'Airport pickup auto-offer', trigger: 'GuestBooked', enabled: true, runs: 1240, avgTime: '5s' },
+   319→  { id: 'au-4', name: 'Loyalty points + direct coupon', trigger: 'GuestCheckedOut', enabled: true, runs: 980, avgTime: '4s' },
+   320→  { id: 'au-5', name: 'AI review reply draft', trigger: 'ReviewReceived', enabled: true, runs: 420, avgTime: '12s' },
+   321→  { id: 'au-6', name: 'Vacancy engine on cancellation', trigger: 'GuestCancelled', enabled: true, runs: 180, avgTime: '6s' },
+   322→  { id: 'au-7', name: 'Rate sync across OTAs', trigger: 'PriceChanged', enabled: true, runs: 2100, avgTime: '3s' },
+   323→  { id: 'au-8', name: 'Turnover + thank-you sequence', trigger: 'GuestCheckedOut', enabled: true, runs: 980, avgTime: '10s' },
+   324→  { id: 'au-9', name: 'Maintenance → room block', trigger: 'RoomUnavailable', enabled: true, runs: 64, avgTime: '1s' },
+   325→  { id: 'au-10', name: 'Reputation insight extraction', trigger: 'ReviewReceived', enabled: false, runs: 0, avgTime: '—' },
+   326→]
+   327→
+   328→// ===================== PAYMENTS & FINANCIAL INFRASTRUCTURE (PaySwap) =====================
+   329→export interface PaymentTransaction {
+   330→  id: string
+   331→  guest: string
+   332→  amount: number
+   333→  currency: string
+   334→  method: string
+   335→  type: 'booking' | 'ancillary' | 'split' | 'escrow' | 'payout' | 'refund' | 'commission'
+   336→  status: 'completed' | 'pending' | 'escrow-held' | 'failed'
+   337→  date: string
+   338→  source: string
+   339→}
+   340→
+   341→export const PAYMENT_TRANSACTIONS: PaymentTransaction[] = [
+   342→  { id: 'pay-1', guest: 'David Kumar', amount: 4050, currency: 'GHS', method: 'PaySwap (Card)', type: 'booking', status: 'completed', date: '2 min ago', source: 'Direct Website' },
+   343→  { id: 'pay-2', guest: 'Aisha Mensah', amount: 9500, currency: 'GHS', method: 'PaySwap (Mobile Money)', type: 'escrow', status: 'escrow-held', date: '1h ago', source: 'Direct Website' },
+   344→  { id: 'pay-3', guest: 'Group Booking (Mensah)', amount: 18600, currency: 'GHS', method: 'PaySwap (Split)', type: 'split', status: 'completed', date: '2h ago', source: 'WhatsApp' },
+   345→  { id: 'pay-4', guest: 'Booking.com', amount: 15900, currency: 'GHS', method: 'Bank Transfer', type: 'commission', status: 'pending', date: '3h ago', source: 'Booking.com' },
+   346→  { id: 'pay-5', guest: 'Sarah Johnson', amount: 450, currency: 'GHS', method: 'PaySwap (Card)', type: 'ancillary', status: 'completed', date: '4h ago', source: 'Cape Coast Tour' },
+   347→  { id: 'pay-6', guest: 'SparkleClean Pro', amount: 2400, currency: 'GHS', method: 'PaySwap (Payout)', type: 'payout', status: 'completed', date: '5h ago', source: 'Supplier payout' },
+   348→  { id: 'pay-7', guest: 'Booking #1094', amount: 1800, currency: 'GHS', method: 'PaySwap (Refund)', type: 'refund', status: 'completed', date: '3h ago', source: 'Expedia cancellation' },
+   349→  { id: 'pay-8', guest: 'Akua (Housekeeping)', amount: 3200, currency: 'GHS', method: 'PaySwap (Staff Payout)', type: 'payout', status: 'completed', date: '6h ago', source: 'Payroll' },
+   350→]
+   351→
+   352→export const PAYMENT_STATS = {
+   353→  processedMTD: 486000,
+   354→  paySwapShare: 68,
+   355→  commissionReconciled: 42100,
+   356→  escrowHeld: 28400,
+   357→  payoutsMTD: 38600,
+   358→  refundsMTD: 4200,
+   359→  multiCurrency: true,
+   360→  currencies: ['GHS', 'USD', 'EUR', 'GBP', 'NGN', 'KES'],
+   361→  fraudBlocked: 4,
+   362→}
+   363→
+   364→export const PAYMENT_FLOWS = [
+   365→  { id: 'pf-1', name: 'Direct booking checkout', icon: '🛒', description: 'PaySwap-powered checkout on your booking widget. Cards, mobile money, bank transfer.', volume: 286400, share: 59, status: 'active' },
+   366→  { id: 'pf-2', name: 'Split payments (group bookings)', icon: '🔀', description: 'Groups split a booking across multiple cards/payers. Auto-reconciled.', volume: 64200, share: 13, status: 'active' },
+   367→  { id: 'pf-3', name: 'Escrow (long stays)', icon: '🔐', description: 'Funds held in escrow for stays 14+ nights. Released on check-in.', volume: 28400, share: 6, status: 'active' },
+   368→  { id: 'pf-4', name: 'Multi-currency', icon: '🌍', description: 'International guests pay in 6 currencies. Auto-converted to GHS at live FX.', volume: 48200, share: 10, status: 'active' },
+   369→  { id: 'pf-5', name: 'OTA commission reconciliation', icon: '🔄', description: 'Auto-matches OTA payouts to bookings. Flags shortfalls instantly.', volume: 42100, share: 9, status: 'active' },
+   370→  { id: 'pf-6', name: 'Supplier & staff payouts', icon: '💸', description: 'Pay cleaners, transfers, suppliers, and staff via PaySwitch in one click.', volume: 38600, share: 8, status: 'active' },
+   371→  { id: 'pf-7', name: 'Guest wallets & loyalty rewards', icon: '👛', description: 'Guests hold wallet balances + loyalty points, redeemable across the network.', volume: 12400, share: 3, status: 'active' },
+   372→  { id: 'pf-8', name: 'Embedded financing', icon: '🏛️', description: 'PaySwap offers working capital based on your cash-flow history. 9.5% APR.', volume: 0, share: 0, status: 'offered' },
+   373→]
+   374→
+   375→export const EMBEDDED_FINANCING = {
+   376→  offerAmount: 120000,
+   377→  apr: 9.5,
+   378→  termMonths: 24,
+   379→  monthlyPayment: 5500,
+   380→  basedOn: '6 months of cash-flow history',
+   381→  useCases: ['Room renovations', 'Pool construction', 'Solar installation', 'New property acquisition'],
+   382→  approvalChance: 94,
+   383→}
+   384→
+   385→export const COMMISSION_RECONCILIATION = [
+   386→  { id: 'rec-1', ota: 'Booking.com', expected: 15900, received: 15900, bookings: 41, status: 'matched' },
+   387→  { id: 'rec-2', ota: 'Airbnb', expected: 7240, received: 7200, bookings: 28, status: 'shortfall', shortfall: 40 },
+   388→  { id: 'rec-3', ota: 'Expedia', expected: 1980, received: 1980, bookings: 9, status: 'matched' },
+   389→  { id: 'rec-4', ota: 'Agoda', expected: 1210, received: 0, bookings: 6, status: 'pending' },
+   390→]
+   391→

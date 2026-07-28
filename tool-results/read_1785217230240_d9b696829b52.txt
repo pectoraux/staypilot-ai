@@ -1,0 +1,576 @@
+     1→'use client'
+     2→
+     3→import * as React from 'react'
+     4→import { Card } from '@/components/ui/card'
+     5→import { Button } from '@/components/ui/button'
+     6→import { Badge } from '@/components/ui/badge'
+     7→import { Separator } from '@/components/ui/separator'
+     8→import { ScrollArea } from '@/components/ui/scroll-area'
+     9→import {
+    10→  Tooltip, TooltipTrigger, TooltipContent,
+    11→} from '@/components/ui/tooltip'
+    12→import { SectionHeader, StatusPill } from '@/components/shared'
+    13→import { DIGITAL_TWIN } from '@/lib/data-v2'
+    14→import {
+    15→  ROOMS, RESERVATIONS, GUESTS, CAMPAIGNS, CHANNELS, REVIEWS, EXPERIENCES,
+    16→  CORPORATE, MAINTENANCE, AI_AGENTS, PROPERTY,
+    17→} from '@/lib/data'
+    18→import { fmtMoney, fmtMoneyShort, fmtDate } from '@/lib/format'
+    19→import { motion } from 'framer-motion'
+    20→import { toast } from 'sonner'
+    21→import {
+    22→  Box, Activity, Brain, Sparkles, BedDouble, CalendarCheck, Users, Megaphone,
+    23→  Radio, UserCog, Wrench, Star, MapPin, Building2, TrendingUp, Zap, Clock,
+    24→  CheckCircle2, AlertCircle, ArrowRight, Cpu, Wifi, Eye, RefreshCw, Layers, Bot,
+    25→} from 'lucide-react'
+    26→
+    27→// ----------------- entity category config -----------------
+    28→type CategoryKey =
+    29→  | 'rooms' | 'bookings' | 'guests' | 'campaigns' | 'channels'
+    30→  | 'staff' | 'maintenance' | 'reviews' | 'experiences' | 'corporate'
+    31→
+    32→interface CategoryDef {
+    33→  key: CategoryKey
+    34→  label: string
+    35→  icon: React.ReactNode
+    36→  color: string // hex
+    37→  angle: number // degrees, where it sits in the orbit
+    38→  count: number
+    39→  trend: number
+    40→  subtitle: string
+    41→}
+    42→
+    43→const STAFF_COUNT = AI_AGENTS.length
+    44→
+    45→const CATEGORIES: CategoryDef[] = [
+    46→  { key: 'rooms',        label: 'Rooms',        icon: <BedDouble className="h-4 w-4" />,   color: '#ea580c', angle: -90, count: DIGITAL_TWIN.rooms,             trend: 0,  subtitle: `${ROOMS.filter(r => r.status === 'Occupied').length} occupied` },
+    47→  { key: 'bookings',     label: 'Bookings',     icon: <CalendarCheck className="h-4 w-4" />, color: '#b45309', angle: -54, count: DIGITAL_TWIN.activeBookings,    trend: 8,  subtitle: 'checked-in + confirmed' },
+    48→  { key: 'guests',       label: 'Guests',       icon: <Users className="h-4 w-4" />,       color: '#0d9488', angle: -18, count: DIGITAL_TWIN.totalGuests,       trend: 5,  subtitle: `${DIGITAL_TWIN.vipGuests} VIP` },
+    49→  { key: 'campaigns',    label: 'Campaigns',    icon: <Megaphone className="h-4 w-4" />,   color: '#be123c', angle: 18,  count: DIGITAL_TWIN.activeCampaigns,   trend: 12, subtitle: 'live marketing' },
+    50→  { key: 'channels',     label: 'Channels',     icon: <Radio className="h-4 w-4" />,       color: '#9333ea', angle: 54,  count: DIGITAL_TWIN.connectedChannels, trend: 0,  subtitle: 'synced & live' },
+    51→  { key: 'staff',        label: 'Staff',        icon: <UserCog className="h-4 w-4" />,     color: '#15803d', angle: 90,  count: STAFF_COUNT,                    trend: 0,  subtitle: `${DIGITAL_TWIN.activeAgents} AI active` },
+    52→  { key: 'maintenance',  label: 'Maintenance',  icon: <Wrench className="h-4 w-4" />,      color: '#a16207', angle: 126, count: DIGITAL_TWIN.openIssues,         trend: -3, subtitle: 'open issues' },
+    53→  { key: 'reviews',      label: 'Reviews',      icon: <Star className="h-4 w-4" />,        color: '#0e7490', angle: 162, count: DIGITAL_TWIN.activeReviews,      trend: 4,  subtitle: 'across platforms' },
+    54→  { key: 'experiences',  label: 'Experiences',  icon: <MapPin className="h-4 w-4" />,      color: '#c2410c', angle: 198, count: DIGITAL_TWIN.experiences,        trend: 6,  subtitle: 'bookable add-ons' },
+    55→  { key: 'corporate',    label: 'Corporate',    icon: <Building2 className="h-4 w-4" />,   color: '#6b7280', angle: 234, count: DIGITAL_TWIN.corporateAccounts,  trend: 2,  subtitle: 'B2B accounts' },
+    56→]
+    57→
+    58→// ----------------- entity side-panel content -----------------
+    59→function useCategoryItems(key: CategoryKey) {
+    60→  switch (key) {
+    61→    case 'rooms': {
+    62→      return ROOMS.slice(0, 5).map(r => ({
+    63→        id: r.id,
+    64→        title: `Room ${r.number} · ${r.name}`,
+    65→        subtitle: `${r.type} · Floor ${r.floor} · ₵${r.baseRate}/night`,
+    66→        trail: r.status,
+    67→      }))
+    68→    }
+    69→    case 'bookings': {
+    70→      return RESERVATIONS
+    71→        .filter(r => r.status === 'Checked-in' || r.status === 'Confirmed')
+    72→        .slice(0, 5)
+    73→        .map(r => ({
+    74→          id: r.id,
+    75→          title: `${r.guestName} · ${r.source}`,
+    76→          subtitle: `${fmtDate(r.checkIn)} → ${fmtDate(r.checkOut)}`,
+    77→          trail: r.status,
+    78→        }))
+    79→    }
+    80→    case 'guests': {
+    81→      return GUESTS.slice(0, 5).map(g => ({
+    82→        id: g.id,
+    83→        title: g.name,
+    84→        subtitle: `${g.country} · ${g.totalStays} stays · ${g.loyaltyTier}`,
+    85→        trail: g.loyaltyTier,
+    86→      }))
+    87→    }
+    88→    case 'campaigns': {
+    89→      return CAMPAIGNS.filter(c => c.status === 'Active' || c.status === 'Scheduled').slice(0, 5).map(c => ({
+    90→        id: c.id,
+    91→        title: c.name,
+    92→        subtitle: `${c.channel} · ${c.audienceSize} guests · ${c.discount}% off`,
+    93→        trail: c.status,
+    94→      }))
+    95→    }
+    96→    case 'channels': {
+    97→      return CHANNELS.filter(c => c.connected).slice(0, 5).map(c => ({
+    98→        id: c.id,
+    99→        title: c.name,
+   100→        subtitle: `${c.type} · ${c.bookingsThisMonth} bookings · ${c.syncStatus}`,
+   101→        trail: c.syncStatus,
+   102→      }))
+   103→    }
+   104→    case 'staff': {
+   105→      return AI_AGENTS.slice(0, 5).map(a => ({
+   106→        id: a.id,
+   107→        title: `${a.avatar} ${a.name}`,
+   108→        subtitle: `${a.role} · ${a.tasksCompleted} tasks`,
+   109→        trail: a.status,
+   110→      }))
+   111→    }
+   112→    case 'maintenance': {
+   113→      return MAINTENANCE.slice(0, 5).map(m => ({
+   114→        id: m.id,
+   115→        title: `Room ${m.roomNumber} · ${m.title}`,
+   116→        subtitle: `${m.priority} · ${m.status} · ₵${m.estimatedCost}`,
+   117→        trail: m.status,
+   118→      }))
+   119→    }
+   120→    case 'reviews': {
+   121→      return REVIEWS.slice(0, 5).map(r => ({
+   122→        id: r.id,
+   123→        title: `${r.guestName} · ${r.platform} · ${r.rating}★`,
+   124→        subtitle: r.text.slice(0, 60) + (r.text.length > 60 ? '…' : ''),
+   125→        trail: r.responded ? 'Responded' : 'Pending',
+   126→      }))
+   127→    }
+   128→    case 'experiences': {
+   129→      return EXPERIENCES.slice(0, 5).map(e => ({
+   130→        id: e.id,
+   131→        title: e.name,
+   132→        subtitle: `${e.category} · ₵${e.price} · ${e.rating}★`,
+   133→        trail: `${e.bookingsThisMonth} bookings`,
+   134→      }))
+   135→    }
+   136→    case 'corporate': {
+   137→      return CORPORATE.slice(0, 5).map(c => ({
+   138→        id: c.id,
+   139→        title: c.name,
+   140→        subtitle: `${c.type} · ${c.totalBookings} bookings · ₵${c.totalRevenue.toLocaleString()}`,
+   141→        trail: c.status,
+   142→      }))
+   143→    }
+   144→  }
+   145→}
+   146→
+   147→// ----------------- tiny inline sparkline (SVG) -----------------
+   148→function Sparkline({ color, trend }: { color: string; trend: number }) {
+   149→  // deterministic 7-point shape derived from trend sign
+   150→  const pts = Array.from({ length: 7 }, (_, i) => {
+   151→    const seed = (i + 1) * 9301 + Math.abs(trend) * 49297
+   152→    const r = ((seed % 233280) / 233280) * 2 - 1
+   153→    return 50 + r * 18 + (trend >= 0 ? i * 2.5 : -i * 2.5)
+   154→  })
+   155→  const w = 56
+   156→  const h = 18
+   157→  const d = pts.map((p, i) => {
+   158→    const x = (i / (pts.length - 1)) * w
+   159→    const y = h - (Math.max(20, Math.min(80, p)) / 100) * h
+   160→    return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`
+   161→  }).join(' ')
+   162→  const gid = `spark-${color.replace('#', '')}`
+   163→  return (
+   164→    <svg width={w} height={h} className="opacity-80">
+   165→      <defs>
+   166→        <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+   167→          <stop offset="0%" stopColor={color} stopOpacity={0.35} />
+   168→          <stop offset="100%" stopColor={color} stopOpacity={0} />
+   169→        </linearGradient>
+   170→      </defs>
+   171→      <path d={`${d} L${w},${h} L0,${h} Z`} fill={`url(#${gid})`} />
+   172→      <path d={d} fill="none" stroke={color} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" />
+   173→    </svg>
+   174→  )
+   175→}
+   176→
+   177→// ----------------- animated big number -----------------
+   178→function AnimatedNumber({ value, format }: { value: number; format: (n: number) => string }) {
+   179→  const [display, setDisplay] = React.useState(0)
+   180→  const ref = React.useRef<number | null>(null)
+   181→  React.useEffect(() => {
+   182→    let raf = 0
+   183→    const start = performance.now()
+   184→    const from = 0
+   185→    const to = value
+   186→    const dur = 900
+   187→    const tick = (now: number) => {
+   188→      const t = Math.min(1, (now - start) / dur)
+   189→      const eased = 1 - Math.pow(1 - t, 3)
+   190→      setDisplay(Math.round(from + (to - from) * eased))
+   191→      if (t < 1) raf = requestAnimationFrame(tick)
+   192→    }
+   193→    raf = requestAnimationFrame(tick)
+   194→    ref.current = raf
+   195→    return () => cancelAnimationFrame(raf)
+   196→  }, [value])
+   197→  return <>{format(display)}</>
+   198→}
+   199→
+   200→// ----------------- Live metric tile -----------------
+   201→function LiveMetricTile({
+   202→  label, value, format, icon, color, sub,
+   203→}: { label: string; value: number; format: (n: number) => string; icon: React.ReactNode; color: string; sub: string }) {
+   204→  return (
+   205→    <Card className="p-4 relative overflow-hidden gap-0">
+   206→      <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full blur-2xl opacity-50" style={{ backgroundColor: color + '22' }} />
+   207→      <div className="relative flex items-center justify-between">
+   208→        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+   209→        <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ backgroundColor: color + '1a', color }}>
+   210→          {icon}
+   211→        </span>
+   212→      </div>
+   213→      <p className="relative mt-1 text-2xl font-bold tracking-tight tabular-nums">
+   214→        <AnimatedNumber value={value} format={format} />
+   215→      </p>
+   216→      <p className="relative text-[11px] text-muted-foreground">{sub}</p>
+   217→    </Card>
+   218→  )
+   219→}
+   220→
+   221→// ----------------- Entity orbit (central visualization) -----------------
+   222→function EntityOrbit({
+   223→  selected, onSelect,
+   224→}: { selected: CategoryKey | null; onSelect: (k: CategoryKey | null) => void }) {
+   225→  // We render the orbit as an absolutely-positioned set of cards over a responsive square.
+   226→  // Center is the property.
+   227→  return (
+   228→    <Card className="relative overflow-hidden p-0 gap-0">
+   229→      <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-teal-500/10" />
+   230→      <div className="absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-orange-500/15 sm:h-[360px] sm:w-[360px]" />
+   231→      <div className="absolute left-1/2 top-1/2 h-[200px] w-[200px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-dashed border-teal-500/10 sm:h-[260px] sm:w-[260px]" />
+   232→
+   233→      {/* center property */}
+   234→      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+   235→        <Tooltip>
+   236→          <TooltipTrigger asChild>
+   237→            <motion.button
+   238→              type="button"
+   239→              onClick={() => onSelect(null)}
+   240→              initial={{ scale: 0.9, opacity: 0 }}
+   241→              animate={{ scale: 1, opacity: 1 }}
+   242→              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+   243→              className="group flex h-24 w-24 sm:h-32 sm:w-32 flex-col items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-2xl shadow-orange-500/30 hover:shadow-orange-500/50 transition-shadow"
+   244→            >
+   245→              <span className="text-2xl sm:text-3xl">🏡</span>
+   246→              <span className="mt-1 text-[10px] font-semibold uppercase tracking-wide opacity-90">Property</span>
+   247→              <span className="text-[9px] opacity-80 max-w-[80px] truncate">{PROPERTY.name}</span>
+   248→            </motion.button>
+   249→          </TooltipTrigger>
+   250→          <TooltipContent side="top">{PROPERTY.name} · {PROPERTY.location}</TooltipContent>
+   251→        </Tooltip>
+   252→        {/* pulse rings */}
+   253→        <motion.span
+   254→          aria-hidden
+   255→          className="pointer-events-none absolute inset-0 rounded-2xl bg-orange-500/30"
+   256→          animate={{ scale: [1, 1.45], opacity: [0.45, 0] }}
+   257→          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeOut' }}
+   258→        />
+   259→      </div>
+   260→
+   261→      {/* category cards around the orbit */}
+   262→      {CATEGORIES.map((cat, i) => {
+   263→        const radius = 140 // % offset from center (px equivalent in 360px square)
+   264→        const rad = (cat.angle * Math.PI) / 180
+   265→        const x = Math.cos(rad) * radius
+   266→        const y = Math.sin(rad) * radius
+   267→        const isSelected = selected === cat.key
+   268→        return (
+   269→          <motion.button
+   270→            type="button"
+   271→            key={cat.key}
+   272→            initial={{ opacity: 0, scale: 0.6 }}
+   273→            animate={{ opacity: 1, scale: 1 }}
+   274→            transition={{ delay: 0.05 * i, type: 'spring', stiffness: 220, damping: 18 }}
+   275→            whileHover={{ scale: 1.08 }}
+   276→            onClick={() => onSelect(isSelected ? null : cat.key)}
+   277→            className={`absolute left-1/2 top-1/2 z-10 w-[120px] sm:w-[140px] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-xl border bg-card/95 backdrop-blur-sm p-2.5 text-left transition-colors ${
+   278→              isSelected ? 'border-orange-500/60 shadow-lg shadow-orange-500/20' : 'border-border hover:border-orange-500/40'
+   279→            }`}
+   280→            style={{ transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))` }}
+   281→          >
+   282→            <div className="flex items-center justify-between">
+   283→              <span className="flex h-6 w-6 items-center justify-center rounded-md" style={{ backgroundColor: cat.color + '1a', color: cat.color }}>
+   284→                {cat.icon}
+   285→              </span>
+   286→              <Sparkline color={cat.color} trend={cat.trend} />
+   287→            </div>
+   288→            <p className="mt-1.5 text-lg font-bold leading-none tabular-nums">{cat.count}</p>
+   289→            <p className="text-[11px] font-medium leading-tight">{cat.label}</p>
+   290→            <p className="text-[9.5px] text-muted-foreground leading-tight truncate">{cat.subtitle}</p>
+   291→          </motion.button>
+   292→        )
+   293→      })}
+   294→
+   295→      {/* overlay legend / instructions */}
+   296→      <div className="relative z-0 flex flex-col items-start justify-between gap-2 p-4 sm:p-5 h-[440px] sm:h-[520px]">
+   297→        <div className="flex items-center gap-2 self-end">
+   298→          <Badge variant="outline" className="bg-background/60 backdrop-blur-sm text-[10px]">
+   299→            <Eye className="h-2.5 w-2.5 mr-1 text-orange-500" /> Click an entity to inspect
+   300→          </Badge>
+   301→        </div>
+   302→        <div className="self-end text-[10px] text-muted-foreground">
+   303→          The AI reasons over this live twin — not isolated records.
+   304→        </div>
+   305→      </div>
+   306→    </Card>
+   307→  )
+   308→}
+   309→
+   310→// ----------------- Side panel listing real items -----------------
+   311→function CategorySidePanel({ category, onClose }: { category: CategoryKey; onClose: () => void }) {
+   312→  const def = CATEGORIES.find(c => c.key === category)!
+   313→  const items = useCategoryItems(category)
+   314→  return (
+   315→    <Card className="p-5 gap-0">
+   316→      <div className="flex items-start justify-between gap-2">
+   317→        <div className="flex items-center gap-2">
+   318→          <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ backgroundColor: def.color + '1a', color: def.color }}>
+   319→            {def.icon}
+   320→          </span>
+   321→          <div>
+   322→            <p className="font-semibold leading-tight">{def.label}</p>
+   323→            <p className="text-[11px] text-muted-foreground">{def.count} live · {def.subtitle}</p>
+   324→          </div>
+   325→        </div>
+   326→        <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={onClose}>Close</Button>
+   327→      </div>
+   328→      <Separator className="my-3" />
+   329→      <ScrollArea className="max-h-80 pr-2">
+   330→        <div className="space-y-2">
+   331→          {items.map((it, i) => (
+   332→            <motion.div
+   333→              key={it.id}
+   334→              initial={{ opacity: 0, x: 6 }}
+   335→              animate={{ opacity: 1, x: 0 }}
+   336→              transition={{ delay: i * 0.04 }}
+   337→              className="rounded-lg border border-border bg-card/60 p-2.5 hover:bg-accent/40 transition-colors"
+   338→            >
+   339→              <div className="flex items-start justify-between gap-2">
+   340→                <p className="text-xs font-semibold leading-tight">{it.title}</p>
+   341→                <StatusPill status={it.trail} />
+   342→              </div>
+   343→              <p className="text-[11px] text-muted-foreground mt-0.5">{it.subtitle}</p>
+   344→            </motion.div>
+   345→          ))}
+   346→        </div>
+   347→      </ScrollArea>
+   348→      <Button
+   349→        size="sm"
+   350→        variant="outline"
+   351→        className="mt-3 h-8 w-full text-xs"
+   352→        onClick={() => toast.info(`Opening ${def.label} module`, { description: 'Routing to the full live view…' })}
+   353→      >
+   354→        Open full {def.label} view <ArrowRight className="h-3 w-3" />
+   355→      </Button>
+   356→    </Card>
+   357→  )
+   358→}
+   359→
+   360→// ----------------- 9-tile entity counts grid -----------------
+   361→function EntityCountsGrid() {
+   362→  const tiles = [
+   363→    { label: 'Rooms',           value: DIGITAL_TWIN.rooms,             icon: <BedDouble className="h-4 w-4" />,    color: '#ea580c' },
+   364→    { label: 'Active Bookings', value: DIGITAL_TWIN.activeBookings,    icon: <CalendarCheck className="h-4 w-4" />, color: '#b45309' },
+   365→    { label: 'Total Guests',    value: DIGITAL_TWIN.totalGuests,       icon: <Users className="h-4 w-4" />,        color: '#0d9488' },
+   366→    { label: 'VIP Guests',      value: DIGITAL_TWIN.vipGuests,         icon: <Sparkles className="h-4 w-4" />,     color: '#a16207' },
+   367→    { label: 'Active Campaigns',value: DIGITAL_TWIN.activeCampaigns,   icon: <Megaphone className="h-4 w-4" />,    color: '#be123c' },
+   368→    { label: 'Connected Channels', value: DIGITAL_TWIN.connectedChannels, icon: <Radio className="h-4 w-4" />,    color: '#9333ea' },
+   369→    { label: 'Open Issues',     value: DIGITAL_TWIN.openIssues,         icon: <AlertCircle className="h-4 w-4" />,  color: '#a16207' },
+   370→    { label: 'Cleaning Tasks',  value: DIGITAL_TWIN.cleaningTasks,      icon: <Wrench className="h-4 w-4" />,       color: '#c2410c' },
+   371→    { label: 'Active Agents',   value: DIGITAL_TWIN.activeAgents,       icon: <Cpu className="h-4 w-4" />,          color: '#15803d' },
+   372→  ]
+   373→  return (
+   374→    <Card className="p-5">
+   375→      <div className="flex items-center justify-between mb-3">
+   376→        <div className="flex items-center gap-2">
+   377→          <Layers className="h-4 w-4 text-orange-500" />
+   378→          <h3 className="font-semibold text-sm">Entity Inventory</h3>
+   379→        </div>
+   380→        <Badge variant="outline" className="text-[10px]">9 entities tracked</Badge>
+   381→      </div>
+   382→      <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-9 gap-2.5">
+   383→        {tiles.map((t) => (
+   384→          <div key={t.label} className="rounded-xl border border-border bg-card/50 p-3 text-center hover:border-orange-500/30 transition-colors">
+   385→            <span className="mx-auto mb-1.5 flex h-8 w-8 items-center justify-center rounded-lg" style={{ backgroundColor: t.color + '1a', color: t.color }}>
+   386→              {t.icon}
+   387→            </span>
+   388→            <p className="text-xl font-bold tabular-nums leading-none">{t.value}</p>
+   389→            <p className="mt-1 text-[10px] text-muted-foreground leading-tight">{t.label}</p>
+   390→          </div>
+   391→        ))}
+   392→      </div>
+   393→    </Card>
+   394→  )
+   395→}
+   396→
+   397→// ----------------- "What the AI sees right now" narrative -----------------
+   398→function AiNarrativeCard() {
+   399→  const dt = DIGITAL_TWIN
+   400→  const occ = dt.liveMetrics.occupancyNow
+   401→  const todayRev = dt.liveMetrics.revenueToday
+   402→  const inquiries = dt.liveMetrics.inquiriesToday
+   403→  const aiActions = dt.liveMetrics.aiActionsToday
+   404→  const autoActions = dt.liveMetrics.autoActionsToday
+   405→  const pending = dt.liveMetrics.approvalsPending
+   406→
+   407→  const narrative = `${dt.rooms} rooms, ${dt.activeBookings} active bookings, ${dt.totalGuests} guests (${dt.vipGuests} VIP), ${dt.activeCampaigns} campaigns running, ${dt.openIssues} open issues. The AI is tracking ${inquiries} inquiries and has taken ${aiActions} actions today (${autoActions} automatic). ${pending} approvals are awaiting your review.`
+   408→
+   409→  return (
+   410→    <Card className="p-5 relative overflow-hidden">
+   411→      <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-orange-500/10 blur-3xl" />
+   412→      <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-teal-500/10 blur-3xl" />
+   413→      <div className="relative">
+   414→        <div className="flex items-center gap-2 mb-3">
+   415→          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/20">
+   416→            <Brain className="h-4 w-4" />
+   417→          </div>
+   418→          <div>
+   419→            <h3 className="font-semibold text-sm">What the AI sees right now</h3>
+   420→            <p className="text-[11px] text-muted-foreground">A synthesized twin-state narrative · auto-refreshed every 30s</p>
+   421→          </div>
+   422→          <Badge variant="outline" className="ml-auto text-[10px] bg-background/60 backdrop-blur-sm">
+   423→            <Sparkles className="h-2.5 w-2.5 mr-1 text-orange-500" /> live
+   424→          </Badge>
+   425→        </div>
+   426→        <p className="text-sm leading-relaxed text-foreground/90">
+   427→          <span className="font-semibold text-orange-600 dark:text-orange-400">Akwaaba</span> is at{' '}
+   428→          <span className="font-semibold">{occ}%</span> occupancy with{' '}
+   429→          <span className="font-semibold text-teal-600 dark:text-teal-400">{fmtMoney(todayRev)}</span> booked today.{' '}
+   430→          {narrative}
+   431→        </p>
+   432→        <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
+   433→          <div className="rounded-lg bg-orange-500/10 p-2">
+   434→            <p className="text-[10px] text-muted-foreground">Revenue Today</p>
+   435→            <p className="text-sm font-semibold text-orange-600 dark:text-orange-400">{fmtMoney(todayRev)}</p>
+   436→          </div>
+   437→          <div className="rounded-lg bg-teal-500/10 p-2">
+   438→            <p className="text-[10px] text-muted-foreground">Inquiries Today</p>
+   439→            <p className="text-sm font-semibold text-teal-600 dark:text-teal-400">{inquiries}</p>
+   440→          </div>
+   441→          <div className="rounded-lg bg-violet-500/10 p-2">
+   442→            <p className="text-[10px] text-muted-foreground">AI Actions Today</p>
+   443→            <p className="text-sm font-semibold text-violet-600 dark:text-violet-400">{aiActions} <span className="text-[10px] font-normal text-muted-foreground">({autoActions} auto)</span></p>
+   444→          </div>
+   445→          <div className="rounded-lg bg-amber-500/10 p-2">
+   446→            <p className="text-[10px] text-muted-foreground">Approvals Pending</p>
+   447→            <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">{pending}</p>
+   448→          </div>
+   449→        </div>
+   450→      </div>
+   451→    </Card>
+   452→  )
+   453→}
+   454→
+   455→// ----------------- Module -----------------
+   456→export function DigitalTwinModule() {
+   457→  const [selected, setSelected] = React.useState<CategoryKey | null>(null)
+   458→  const [tick, setTick] = React.useState(0)
+   459→  React.useEffect(() => {
+   460→    const id = setInterval(() => setTick(t => t + 1), 30_000)
+   461→    return () => clearInterval(id)
+   462→  }, [])
+   463→
+   464→  const lm = DIGITAL_TWIN.liveMetrics
+   465→
+   466→  return (
+   467→    <div className="space-y-5">
+   468→      {/* Header */}
+   469→      <SectionHeader
+   470→        title="Digital Twin · Live Business Model"
+   471→        description="A live digital model of your entire business. The AI reasons over this twin instead of isolated records."
+   472→        action={
+   473→          <div className="flex items-center gap-2">
+   474→            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+   475→              <span className="relative flex h-2 w-2">
+   476→                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-60" />
+   477→                <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+   478→              </span>
+   479→              Live
+   480→            </span>
+   481→            <Button size="sm" variant="outline" onClick={() => { setTick(t => t + 1); toast.success('Digital Twin re-synced', { description: 'All entity counts refreshed from live sources.' }) }}>
+   482→              <RefreshCw className="h-3.5 w-3.5" /> Re-sync
+   483→            </Button>
+   484→          </div>
+   485→        }
+   486→      />
+   487→
+   488→      {/* Live metrics dashboard */}
+   489→      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+   490→        <LiveMetricTile label="Occupancy Now"     value={lm.occupancyNow}     format={(n) => `${n}%`}                 icon={<Activity className="h-4 w-4" />}    color="#ea580c" sub={`${Math.round(DIGITAL_TWIN.rooms * lm.occupancyNow / 100)}/${DIGITAL_TWIN.rooms} rooms`} />
+   491→        <LiveMetricTile label="Revenue Today"     value={lm.revenueToday}     format={(n) => fmtMoneyShort(n)}        icon={<TrendingUp className="h-4 w-4" />}  color="#0d9488" sub="booked so far" />
+   492→        <LiveMetricTile label="Inquiries Today"   value={lm.inquiriesToday}   format={(n) => `${n}`}                  icon={<Zap className="h-4 w-4" />}         color="#be123c" sub="across channels" />
+   493→        <LiveMetricTile label="AI Actions Today"  value={lm.aiActionsToday}   format={(n) => `${n}`}                  icon={<Cpu className="h-4 w-4" />}         color="#9333ea" sub={`${lm.autoActionsToday} automatic`} />
+   494→        <LiveMetricTile label="Auto Actions"      value={lm.autoActionsToday} format={(n) => `${n}`}                  icon={<Bot className="h-4 w-4" />}         color="#15803d" sub="no human needed" />
+   495→        <LiveMetricTile label="Approvals Pending" value={lm.approvalsPending} format={(n) => `${n}`}                  icon={<Clock className="h-4 w-4" />}       color="#a16207" sub="awaiting your review" />
+   496→      </div>
+   497→
+   498→      {/* Central entity map + side panel */}
+   499→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   500→        <div className="lg:col-span-2">
+   501→          <EntityOrbit selected={selected} onSelect={setSelected} />
+   502→        </div>
+   503→        <div>
+   504→          {selected ? (
+   505→            <CategorySidePanel category={selected} onClose={() => setSelected(null)} />
+   506→          ) : (
+   507→            <Card className="p-5 h-full flex flex-col items-center justify-center text-center gap-3 border-dashed">
+   508→              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500/15 to-teal-500/15">
+   509→                <Box className="h-6 w-6 text-orange-500" />
+   510→              </div>
+   511→              <div>
+   512→                <p className="text-sm font-semibold">Inspect an entity</p>
+   513→                <p className="text-xs text-muted-foreground max-w-[260px] mt-1">
+   514→                  Click any orbiting category to see live items pulled straight from your data layer.
+   515→                </p>
+   516→              </div>
+   517→              <div className="flex flex-wrap gap-1.5 justify-center mt-1">
+   518→                {CATEGORIES.slice(0, 6).map(c => (
+   519→                  <button
+   520→                    key={c.key}
+   521→                    onClick={() => setSelected(c.key)}
+   522→                    className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] border hover:bg-accent/40 transition-colors"
+   523→                    style={{ color: c.color, borderColor: c.color + '40' }}
+   524→                  >
+   525→                    {c.icon} {c.label}
+   526→                  </button>
+   527→                ))}
+   528→              </div>
+   529→            </Card>
+   530→          )}
+   531→        </div>
+   532→      </div>
+   533→
+   534→      {/* 9-tile entity inventory */}
+   535→      <EntityCountsGrid />
+   536→
+   537→      {/* AI narrative + AI sync health */}
+   538→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   539→        <div className="lg:col-span-2">
+   540→          <AiNarrativeCard />
+   541→        </div>
+   542→        <Card className="p-5">
+   543→          <div className="flex items-center gap-2 mb-3">
+   544→            <Wifi className="h-4 w-4 text-teal-500" />
+   545→            <h3 className="font-semibold text-sm">Twin Sync Health</h3>
+   546→            <Badge variant="outline" className="ml-auto text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+   547→              <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Healthy
+   548→            </Badge>
+   549→          </div>
+   550→          <div className="space-y-2">
+   551→            {[
+   552→              { src: 'PMS / Reservations',    lag: '0.4s', status: 'synced' },
+   553→              { src: 'Channel Manager (11)',  lag: '1.2s', status: 'synced' },
+   554→              { src: 'Guest CRM',             lag: '0.9s', status: 'synced' },
+   555→              { src: 'Marketing Engine',      lag: '2.0s', status: 'synced' },
+   556→              { src: 'Reputation Aggregator', lag: '4.5s', status: 'degraded' },
+   557→              { src: 'Finance Ledger',        lag: '0.6s', status: 'synced' },
+   558→            ].map((row) => (
+   559→              <div key={row.src} className="flex items-center justify-between rounded-lg border border-border bg-card/40 px-2.5 py-1.5">
+   560→                <span className="text-xs">{row.src}</span>
+   561→                <div className="flex items-center gap-2">
+   562→                  <span className="text-[10px] text-muted-foreground tabular-nums">{row.lag}</span>
+   563→                  {row.status === 'synced'
+   564→                    ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-2.5 w-2.5" /> synced</span>
+   565→                    : <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-1.5 py-0.5 text-[10px] text-amber-600 dark:text-amber-400"><AlertCircle className="h-2.5 w-2.5" /> {row.status}</span>}
+   566→                </div>
+   567→              </div>
+   568→            ))}
+   569→          </div>
+   570→          <p className="mt-3 text-[10px] text-muted-foreground">Last full twin rebuild: just now · sync #{tick + 1284}</p>
+   571→        </Card>
+   572→      </div>
+   573→    </div>
+   574→  )
+   575→}
+   576→
