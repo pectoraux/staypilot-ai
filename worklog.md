@@ -947,3 +947,29 @@ Stage Summary:
 - Files MODIFIED (only these two): `src/components/modules/predictive-ops.tsx` (confidenceColor 3-tier alignment), `src/components/modules/data-cloud.tsx` (fmtBig trailing-.0 strip). Did NOT touch any locked files.
 - Work record saved to /agent-ctx/V4-5-full-stack-developer.md.
 - TASK COMPLETE.
+
+---
+Task ID: V4-9
+Agent: Orchestrator (main)
+Task: V4 lint, cleanup, Agent Browser verification, GitHub push
+
+Work Log:
+- Cleaned redundant <SonnerToaster> instances from api-platform.tsx + treasury.tsx (global Toaster already in layout.tsx)
+- Replaced fake Stripe key pattern (sk_live_...) in api-platform.tsx with safe placeholder (staypilot_sk_test_...) to satisfy GitHub push protection — 16 references updated
+- bun run lint → exit 0 (clean) across all 48 modules
+- Agent Browser end-to-end verification of V4 flagship features:
+  * Outcome Goals (new home): "Don't manage modules. Set outcomes." hero; 6 goal cards with north-star metrics, progress, AI confidence, assigned agents; clicked "Maintain 90% occupancy" → detail dialog with Baseline/Current/Target, AI-decomposed milestones ("Reach 75% this month"), AI team assigned, Accelerate/Pause actions ✓
+  * Autonomous Engine: "The engine doesn't wait for low occupancy. It predicts it." hero; 8-week vacancy forecast (Without AI rose vs With AI teal); scenario cards showing "Occupancy gap detected in 3 weeks", "Without AI 54% → With AI 83%", auto-executing workflows ✓
+  * Data Cloud: "Premium subscription · 184M data points · 5,247 properties"; regional metrics table; seasonal trends ✓
+  * API Platform: developer portal with 16 endpoints, webhooks, API key card, code snippets, apps ✓
+  * Treasury: "TREASURY · PORTFOLIO · Powered by PaySwap"; accounts, payout orchestration, embedded financing ✓
+  * Digital Employees: "Hire a specialized AI employee" with personas (Amani Luxury Revenue Manager, Zuri Marketing Director), capabilities-vs-employees explainer ✓
+- Mobile (390×844): hamburger menu + Outcome Goals render ✓
+- No console errors, no hydration mismatches in dev.log
+- V4 committed (432a7d0) and pushed to github.com/pectoraux/staypilot-ai
+
+Stage Summary:
+- V4 complete: 8 new modules + Outcome Goals as new home + nav restructure (48 modules total, all lazy-loaded)
+- The app now shifts from tools to outcomes: owners hire AI teams with measurable goals; the AI decomposes goals into missions and executes autonomously
+- Strategic positioning: hospitality infrastructure — StayPilot Revenue AI / Network / Payments / Marketplace / Intelligence Cloud / APIs / AI Workforce
+- TASK COMPLETE — V4 pushed to GitHub
