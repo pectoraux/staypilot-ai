@@ -9,6 +9,7 @@ const lazy = <T extends { default: React.ComponentType }>(p: Promise<T>) =>
 
 const OutcomeDashboardModule = lazy(import('./outcome-dashboard').then(m => ({ default: m.OutcomeDashboardModule })))
 const WorkforceConsoleModule = lazy(import('./workforce-console').then(m => ({ default: m.WorkforceConsoleModule })))
+const WaitlistModule = lazy(import('./waitlist').then(m => ({ default: m.WaitlistModule })))
 const OutcomeGoalsModule = lazy(import('./outcome-goals').then(m => ({ default: m.OutcomeGoalsModule })))
 const AutonomousEngineModule = lazy(import('./autonomous-engine').then(m => ({ default: m.AutonomousEngineModule })))
 const MissionControlModule = lazy(import('./mission-control').then(m => ({ default: m.MissionControlModule })))
@@ -62,6 +63,7 @@ const MarketplaceModule = lazy(import('./marketplace').then(m => ({ default: m.M
 const MAP: Record<ModuleKey, React.ComponentType> = {
   'outcome-dashboard': OutcomeDashboardModule,
   'workforce-console': WorkforceConsoleModule,
+  'waitlist': WaitlistModule,
   'outcome-goals': OutcomeGoalsModule,
   'autonomous-engine': AutonomousEngineModule,
   'mission-control': MissionControlModule,

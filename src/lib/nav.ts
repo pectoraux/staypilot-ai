@@ -5,7 +5,7 @@ import {
   Star, Brain, Webhook, Wallet, Crown, Plug, Cpu, Activity,
   CalendarDays, BookOpen, MessageCircle, Megaphone, FlaskConical,
   Building2, Package, Crosshair, Radio, Wrench, Cloud,
-  Map, LayoutDashboard,
+  Map, LayoutDashboard, Shield,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -24,6 +24,7 @@ export const NAV_ITEMS: NavItem[] = [
   { key: 'copilot', label: 'Hospitality Copilot', icon: Command, group: 'Workforce', badge: '⌘K' },
   { key: 'outcome-goals', label: 'Outcome Goals', icon: Target, group: 'Workforce', badge: '6' },
   { key: 'autonomous-engine', label: 'Autonomous Engine', icon: Zap, group: 'Workforce' },
+  { key: 'waitlist', label: 'Waitlist', icon: Shield, group: 'Workforce', isNew: true },
 
   // Outcomes — missions & approvals
   { key: 'mission-control', label: 'Mission Control', icon: Rocket, group: 'Outcomes' },

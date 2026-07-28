@@ -3,7 +3,7 @@
 import { create } from 'zustand'
 
 export type ModuleKey =
-  | 'outcome-dashboard' | 'workforce-console' | 'copilot'
+  | 'outcome-dashboard' | 'workforce-console' | 'copilot' | 'waitlist'
   | 'outcome-goals' | 'autonomous-engine'
   | 'mission-control' | 'missions' | 'opportunities' | 'agents' | 'insights'
   | 'network-intelligence' | 'benchmarking' | 'ai-marketplace' | 'digital-employees' | 'guest-network'

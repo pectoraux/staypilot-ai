@@ -8,10 +8,31 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { useTheme } from '@/components/theme-provider'
-import { Moon, Sun, Menu, Search, Bell, Sparkles, Hotel, ChevronRight, Command } from 'lucide-react'
+import { Moon, Sun, Menu, Search, Bell, Sparkles, Hotel, ChevronRight, Command, LogOut } from 'lucide-react'
 import { ModuleRegistry } from './modules/registry'
 import { CopilotPalette } from './copilot-palette'
 import { startOrchestrator } from '@/lib/workforce/orchestrator'
+import { useAuth } from './auth-provider'
+
+function UserMenu() {
+  const { user, logout } = useAuth()
+  const initials = user?.name?.split(' ').map((p) => p[0]).slice(0, 2).join('').toUpperCase() ?? 'U'
+  const role = user?.role ?? 'Owner'
+  return (
+    <div className="flex items-center gap-2 pl-1">
+      <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-600 text-white text-sm font-semibold">
+        {initials}
+      </div>
+      <div className="hidden md:block min-w-0">
+        <p className="text-xs font-semibold leading-tight truncate max-w-[120px]">{user?.name ?? 'User'}</p>
+        <p className="text-[10px] text-muted-foreground">{role}</p>
+      </div>
+      <Button variant="ghost" size="icon" className="rounded-full h-8 w-8" aria-label="Log out" onClick={() => logout()}>
+        <LogOut className="h-3.5 w-3.5" />
+      </Button>
+    </div>
+  )
+}
 
 function SidebarContent() {
   const { activeModule, setModule } = useApp()
@@ -125,15 +146,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500" />
         </Button>
         <ThemeToggle />
-        <div className="flex items-center gap-2 pl-1">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-orange-500 to-amber-600 text-white text-sm font-semibold">
-            KA
-          </div>
-          <div className="hidden md:block">
-            <p className="text-xs font-semibold leading-tight">Kwesi Admin</p>
-            <p className="text-[10px] text-muted-foreground">Owner</p>
-          </div>
-        </div>
+        <UserMenu />
       </div>
     </header>
   )
