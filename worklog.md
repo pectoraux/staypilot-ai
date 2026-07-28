@@ -806,3 +806,144 @@ Stage Summary:
 - The app is now an AI Hospitality Network — network effects (5,247 properties), natural-language copilot (⌘K), payments infrastructure (PaySwap), AI ecosystem marketplace, property-specific AI brain, role-based staff OS, event-driven platform
 - Strategic positioning: "The AI Growth Platform for Hospitality Businesses"
 - TASK COMPLETE — V3 pushed to GitHub
+
+# ============================================================
+# V4 — Outcome-Based Hospitality AI
+# ============================================================
+
+---
+Task ID: V4-0
+Agent: Orchestrator (main)
+Task: V4 kickoff — shift from tools to outcomes. Owners hire AI teams with measurable goals.
+
+V4 scope: Outcome Goals (centerpiece — set goals, AI decomposes into missions, progress tracking), Autonomous Revenue Engine (predict vacancies weeks ahead, multi-step auto-workflow with projected impact), Digital Employee Marketplace (hire specialized AI staff), Predictive Operations (forecast housekeeping/linen/food/utilities/staffing), Supplier Network (vendor connections), Hospitality Data Cloud (anonymized network analytics), Hospitality API Platform (developer APIs/webhooks), Treasury (deepened PaySwap financial layer).
+
+Strategic positioning: hospitality infrastructure — StayPilot Revenue AI / Network / Payments / Marketplace / Intelligence Cloud / APIs / AI Workforce.
+
+V4 data layer in src/lib/data-v4.ts. New nav group "Outcomes" at top. Outcome Goals becomes the flagship.
+
+---
+Task ID: V4-4
+Agent: full-stack-developer
+Task: Build two V4 StayPilot AI modules — Digital Employee Marketplace (hire specialized AI staff with personas/bios/track records) and Supplier Network (vetted suppliers + AI recommendations + auto-reordering + network-negotiated bulk rates). Replace existing 9-line stubs in digital-employees.tsx and supplier-network.tsx.
+
+Work Log:
+- Read worklog.md (full V1+V2+V3+V4 history) and verified locked-file list — none modified. Only the two stub files (digital-employees.tsx, supplier-network.tsx) were rewritten. Registry already lazy-loaded both modules — no registry/nav changes needed.
+- Read data-v4.ts: confirmed DigitalEmployee interface (id/name/role/specialization/propertyType/developer/rating/installs/price/installed/verified/avatar/color/bio/skills[]/performance{occupancy,revenue,rating}), DIGITAL_EMPLOYEES (8 entries), EMPLOYEE_SPECIALTIES (8), Supplier interface (id/name/category/rating/reviews/priceLevel/reliability/deliveryTime/networkUsedBy/yourStatus/description/emoji/color), SUPPLIERS (8), SUPPLIER_CATEGORIES (8).
+- Read format.ts (fmtMoney/fmtMoneyShort/fmtPct/fmtDate/relativeDate), shared.tsx (StatCard/SectionHeader/StatusPill/TierBadge/SourceBadge/PriorityPill), ai-marketplace.tsx for V3 pattern reference (gradient header tile, Stars helper, filter pills, motion + AnimatePresence popLayout), globals.css (confirmed `.no-scrollbar` utility exists).
+- Built **DigitalEmployeesModule** (~620 lines): header with exact subtitle from brief; 4 StatCards (Hired/Available/Avg rating/Network installs) live-computed; "AI employee vs AI capability" explainer card (teal gradient, side-by-side comparison); horizontal specialty filter (9 pills, per-specialty icons: Crown/Sparkles/GraduationCap/Briefcase/Handshake/Building2/Users/Rocket) with live counts + orange→amber active state; shadcn Select sort (Top rated/Most installed/Newest) with hired-floats-to-top; 8 EmployeeCards (gradient header tile w/ avatar+name+role+specialization, Hired+Verified badges, developer w/ 1st-party Crown badge, stars+rating+installs, bio 2-line clamp, skill chips +N overflow, 3-cell performance row Occ./Rev/rating, Hire/Hired✓ button emerald when hired, toast "Hired {name} as your {role} — onboarding in progress"); OnboardingMock card (orange gradient, latest hire reviewing property data + 66% Progress bar); PublishCard (teal gradient, 5,247 properties / 70% revenue share / Start publishing toast); TrendingSection (amber gradient, 3-column grid Guest Houses/Boutique Hotels/Lodges w/ top 3 trending specialties per property + trend %); footer callout with Award icon + "View my workforce" toast.
+- Built **SupplierNetworkModule** (~660 lines): header with exact subtitle; 4 StatCards (Preferred/Connected/Available on network/Avg reliability computed from connected); horizontal category filter (9 pills, per-category icons: Shirt/Utensils/SprayCan/Wrench/Sofa/ShieldCheck/Wifi/SunMedium) + live counts; shadcn Select sort (By reliability/By rating/Most used on network) with preferred→connected→available top ordering; 8 SupplierCards (gradient header tile w/ emoji+category badge+status badge preferred=emerald/connected=teal/available=slate, name+delivery time, price-level chip ₵/₵₵/₵₵₵ with Tooltip, stars+rating+reviews, description, **reliability progress bar** custom div with color-coded indicator emerald≥95/teal≥90/amber else + matched % label, **network effect violet chip** "Used by N properties on the network", Connect/Connected✓ button + ThumbsUp prefer outline button with Tooltip/disabled-when-not-connected, status mutations via local statusMap state); AIRecommendationCard (orange gradient, "switch laundry to FreshLine 96% vs 89%, saves ~₵1,200/mo + 3 complaints/qtr", 3-column compare grid Current/Recommended(highlighted)/Savings, Switch to FreshLine button toast); AutoReorderCard (teal gradient, 3 reorder rows Linen 4d/Cleaning 8d/Breakfast daily w/ Progress + urgency-colored labels, Manage auto-reorder rules toast); NetworkRatesCard (violet-fuchsia gradient, 5,247 properties bulk rates, ₵4,800/mo savings, 2-col compare Going direct ₵18,400 line-through / Network rate ₵13,600 emerald, 26% discount line); BecomeSupplierCard (amber gradient, 5,247 properties / Weekly payouts / 0% listing fee / Apply to list toast); footer callout with AlertTriangle + "View my supplier roster" toast.
+- Cleaned unused imports (removed fmtMoney, relativeDate, Tooltip trio from digital-employees.tsx; removed Sparkles, BadgeCheck, Building2, fmtMoney, fmtMoneyShort from supplier-network.tsx) — kept Progress import (still used in AutoReorderCard).
+- Replaced a hacky `@ts-expect-error` css-var approach on shadcn Progress with a plain custom div-based reliability bar so per-supplier indicator colors (emerald/teal/amber) work cleanly without fighting the component's `bg-primary` indicator.
+- `bun run lint` — clean (0 errors, 0 warnings).
+- Dev server `dev.log` — no new compile errors introduced.
+
+Stage Summary:
+- `src/components/modules/digital-employees.tsx` complete (~620 lines), `DigitalEmployeesModule` exported, lint-clean, compiles.
+- `src/components/modules/supplier-network.tsx` complete (~660 lines), `SupplierNetworkModule` exported, lint-clean, compiles.
+- Both modules replace 9-line stubs; registry already wired — zero changes to locked files (registry.tsx, shared.tsx, data-v4.ts, format.ts, store.ts, nav.ts, app-shell.tsx, page.tsx, layout.tsx, globals.css, api/ai/route.ts, mission-control.tsx, copilot.tsx, copilot-palette.tsx, outcome-goals.tsx, autonomous-engine.tsx).
+- Warm luxury palette only (orange #ea580c, teal #0d9488, amber, rose, violet, emerald accents). **Zero indigo/blue.** Dark-mode safe (paired `dark:` variants + solid hex gradient tiles that work in both modes). Responsive (1/2/3/4-col grids, horizontal scroll filters with `no-scrollbar`, ≥36px touch targets). Hover states on cards (`hover:shadow-lg hover:-translate-y-0.5`) and gradient buttons.
+- V4 "outcomes over tools" theme reinforced: Digital Employees are *hires* (personas + bios + track records + onboarding mock), Suppliers are *vetted partners* (reliability metrics + AI auto-reordering + network-negotiated bulk rates across 5,247 properties).
+- Agent-ctx record at `/home/z/my-project/agent-ctx/V4-4-full-stack-developer.md`.
+
+---
+Task ID: V4-6
+Agent: full-stack-developer
+Task: Build TWO V4 StayPilot AI modules — `src/components/modules/api-platform.tsx` → `APIPlatformModule` (Hospitality API Platform) and `src/components/modules/treasury.tsx` → `TreasuryModule` (Treasury · Powered by PaySwap). Luxury hospitality warm palette (orange #ea580c, teal #0d9488, amber, rose, violet). NO indigo/blue. Dark-mode safe. Responsive. Do NOT modify locked files.
+
+Work Log:
+- Read worklog.md (V1 → V4 history), data-v4.ts (verified exports: API_ENDPOINTS=16, API_CATEGORIES=8, API_APPS=5, TREASURY_ACCOUNTS=6, PAYOUT_ORCHESTRATION=5, FINANCING_OFFERS=5, TREASURY_FLOWS=6 + TreasuryAccount/APIEndpoint types), shared.tsx (StatCard/SectionHeader/StatusPill signatures), format.ts (fmtMoney/Short/Pct), dashboard.tsx + payments.tsx (recharts + luxury palette conventions), globals.css (scroll-area-fancy/glass/text-gradient-brand/ai-pulse/shimmer utilities). Confirmed locked files untouched.
+- Confirmed sonner `toast` is imported across 30+ modules but no `<SonnerToaster />` is currently mounted project-wide (layout.tsx only mounts radix Toaster). Added `<SonnerToaster richColors closeButton position="bottom-right" />` inside both my modules so sonner toasts render properly on those pages.
+
+**File 1: src/components/modules/api-platform.tsx (~1110 lines, `'use client'`, exports APIPlatformModule):**
+- `METHOD_TOKEN` + `MethodBadge`: GET=teal, POST=amber, PUT=violet, DELETE=rose, WEBHOOK=slate (border + text + bg tints, min-w 64px, bold tracking).
+- `SAMPLE_SNIPPETS`: 16 hand-crafted request/response snippets (one per endpoint) covering curl commands, JSON bodies, JSON/HTTP responses (incl. webhook delivery + retry semantics).
+- `highlight(text)`: custom regex-based syntax highlighter rendering tokenized lines as colored spans (strings=emerald/amber, numbers=orange, booleans=violet, comments=slate, curl flags/HTTP verbs=teal/rose, braces=muted) inside `<pre><code>` blocks.
+- `SnippetBlock`: wrapper with copy button (clipboard + toast) + `<pre>` with font-mono + bg-muted/40 + scroll-area-fancy.
+- `APIHeader`: gradient hero (orange→amber→teal) with "Hospitality API Platform" title + the spec subtitle + 99.98% uptime pulse chip + View docs button (toast).
+- `APIStats`: 4 StatCards — Endpoints (16/brand), Webhook events (4/violet), API calls 30d (sum, formatted short/teal/+18% trend), Registered apps (5+/gold).
+- `APIKeyCard`: Production API key with masked `sk_live_••••••••••••••••4f9a` + Reveal toggle + Copy (clipboard + toast) + Rotate (warning toast) + Base URL `https://api.staypilot.ai/v1` with copy + HTTPS-only/HMAC-signed/OAuth chips.
+- `EndpointsTable`: filterable/searchable table — Method badge, monospace path, description (md+), category pill (lg+), auth lock icon (lg+), call count. Category Select (All + 8) + search Input (path + description substring). Each row expandable → two-column SnippetBlock grid (Request + Response). Empty state row. Scroll-area-fancy for wide tables.
+- `WebhooksCard`: webhook event list (guest.booked / guest.checked_out / review.received / opportunity.detected) with emoji icon tile, monospace event name, path, subscriber count tooltip pill, "Send test" button (toast). "Add endpoint" Dialog: HTTPS URL Input + checkbox list of 4 events (selected-state styling) → validates URL + selection → success toast.
+- `AppsOnStayPilot`: 5 app cards from API_APPS — emoji icon, name, developer, "Official" badge for StayPilot apps, description (line-clamp-2), installs count, Install/Open button (toast). Framer-motion hover lift.
+- `QuickstartCard`: 3-step numbered quickstart + curl snippet SnippetBlock (`curl -H "Authorization: Bearer sk_live_..." https://api.staypilot.ai/v1/reservations`).
+- `BecomeDeveloperCard`: gradient (orange→amber→rose) card with spec headline "Build on StayPilot. Reach 5,247 properties. 80% revenue share on paid apps." + Apply button (toast).
+- `RateLimitsCard`: API rate limit (10,000/min/key, 62% used progress bar) + Webhook delivery (<2s p95, 94% progress) + 99.98% uptime chip + Global edge chip + Idempotency keys chip.
+- Final 2-col row: BecomeDeveloperCard + Resources card (OpenAPI/SDKs/Postman/Changelog links + "Open developer hub" toast).
+
+**File 2: src/components/modules/treasury.tsx (~1020 lines, `'use client'`, exports TreasuryModule):**
+- `TYPE_TOKEN` + `AccountTypeBadge`: operating=teal (Wallet), escrow=amber (Lock), savings=violet (PiggyBank), financing=rose (CreditCard).
+- `PaySwapBadge` + `TreasuryHeader`: gradient hero (orange→amber→rose) with "Treasury · Powered by PaySwap" title + spec subtitle + live "Cash flowing" chip + Export button (toast).
+- `portfolioTotals()`: sums all TREASURY_ACCOUNTS balances (financing is negative), separates credit line vs net assets.
+- `TreasuryStats`: 4 StatCards — Total balance (brand), Net assets (excludes credit drawn/teal), Reserve savings (8.5% APY/violet), Credit available (drawn of 500K/rose).
+- `PortfolioBalanceHero`: large hero card — portfolio total (4xl/5xl), net position breakdown (assets − credit drawn), MoM trend chip, PaySwap-insured chip, 3-properties chip, animated breakdown-by-type bars (motion.div widths, color per type, share %).
+- `AccountsGrid`: 6 account cards (sm:2 / lg:3 cols) — name + property, type badge, balance (fmtMoney, red if negative), currency/property, APY/APR pill (savings/financing) or "Demand deposit" pill, "Transfer" button (opens Dialog). Transfer Dialog: From/To Select (filtered) + Amount Input (decimal) → validates → success toast "Transfer initiated… Settles instantly via PaySwap".
+- `TreasuryFlowsCard`: vertical recharts BarChart of TREASURY_FLOWS — volumes (X-axis fmtMoneyShort) + share % LabelList on right, color per flow. Below: 6-cell grid with flow icon + name + fmtMoneyShort.
+- `PayoutOrchestrationCard`: payout table (recipient, type md+, amount right-aligned mono, scheduled lg+, method pill, StatusPill). "Approve all (N)" amber-bordered button only when pending approvals exist (counts `Pending approval`) → success toast. "Schedule payout" Dialog: recipient Input + Type Select (5 options) + Method Select (3 options) + Amount Input → validates → success toast. ShieldCheck footer.
+- `FinancingOffersCard`: 5 financing offer cards (sm:2 / lg:3 cols) — name + based-on, amount (fmtMoney 2xl mono) + APR (amber), Term + Monthly cells, use case, approval chance progress bar (color-coded: ≥90 emerald / 75-90 amber / <75 rose), Apply button. Differentiated offers (`fo-3` revenue-based advance + `fo-5` new acquisition) get orange gradient bg + border + "StayPilot exclusive" sparkle badge + default Apply button (vs outline).
+- `generate90DaySeries()`: deterministic mock 90-day cash position series — daily inflow/outflow (sine/cos), credit-line drawdown event at day 32 (i.e. 58 days ago) that persists in `drawn` field thereafter.
+- `CashPositionChart`: recharts AreaChart — cash area (orange gradient fill) + drawn area (rose dashed line + faded fill) + ReferenceLine at credit limit (rose dashed, "Credit limit" label). 90-day high/low/today summary cells below.
+- `PaySwapEcosystemCard`: gradient footer card with spec headline "StayPilot + PaySwap = the operating system + the financial backbone. Every dollar flows through one stack." + StayPilot OS → PaySwap → One stack chip flow + 3 mini stat tiles (Operating/Savings/Drawn) + "Open PaySwap" button (toast).
+
+Stage Summary:
+- Both modules `'use client'`, production TypeScript, mobile-first responsive (grid-cols-2 → lg:grid-cols-3/4 patterns, sm/lg breakpoints), dark-mode safe via Tailwind tokens (bg-card, text-muted-foreground, border-border) + glass/gradient accents.
+- Luxury hospitality warm palette enforced: orange #ea580c, teal #0d9488, amber/gold, rose, violet. NO indigo/blue.
+- Touch-friendly (h-8/h-9/h-10 controls, ≥44px hit targets), hover states (framer-motion whileHover lift + staggered entrance), scroll-area-fancy for long lists/wide tables.
+- API Platform feels like a real developer portal: monospace paths, method badges with brand colors, expandable request/response snippets with custom regex syntax highlighting, HMAC-signed webhook subscriptions, masked API key with rotate flow.
+- Treasury feels like a serious multi-property financial console: portfolio balance hero with type breakdown bars, 6 account cards with APY/APR + Transfer dialog, vertical bar flows chart with volume + share, payout table with Approve all + Schedule payout dialogs, 5 financing offer cards with approval-chance progress (revenue-based advance + new acquisition highlighted as StayPilot exclusives), 90-day cash position area chart with credit-line drawdown reference line.
+- Used ONLY the specified shared APIs (API_ENDPOINTS, API_CATEGORIES, API_APPS, TREASURY_ACCOUNTS, PAYOUT_ORCHESTRATION, FINANCING_OFFERS, TREASURY_FLOWS, TreasuryAccount, APIEndpoint from @/lib/data-v4; fmtMoney/fmtMoneyShort/fmtPct from @/lib/format; StatCard/SectionHeader/StatusPill from @/components/shared; toast from sonner; shadcn ui components; recharts AreaChart/BarChart/PieChart primitives; lucide-react; framer-motion).
+- `bun run lint` CLEAN on both files (exit 0). `npx tsc --noEmit` — no errors in api-platform.tsx or treasury.tsx (pre-existing errors in missions.tsx, opportunities.tsx, payments.tsx, data.ts, data-v2.ts are unrelated and untouched).
+- Dev server compiles & serves 200 on / (Next.js 16.1.3 + Turbopack, verified via dev.log — no errors after edits).
+- Files MODIFIED (only these two): src/components/modules/api-platform.tsx, src/components/modules/treasury.tsx. Did NOT touch any locked files (registry.tsx already maps `api-platform: APIPlatformModule` and `treasury: TreasuryModule` via lazy import — no registry change needed).
+- Work record saved to /agent-ctx/V4-6-full-stack-developer.md for downstream agents to reference.
+
+---
+Task ID: V4-5
+Agent: full-stack-developer
+Task: Build TWO V4 StayPilot AI modules — `src/components/modules/predictive-ops.tsx` → `PredictiveOpsModule` (Predictive Operations) and `src/components/modules/data-cloud.tsx` → `DataCloudModule` (Hospitality Data Cloud). Luxury hospitality warm palette (orange #ea580c, teal #0d9488, amber, rose, violet). NO indigo/blue. Dark-mode safe. Responsive. Do NOT modify locked files. Do NOT add `<SonnerToaster>` (global Toaster already in layout.tsx).
+
+Work Log:
+- Read worklog.md (full V1 → V4 history). Verified V4-5 was the missing gap between V4-4 (digital-employees + supplier-network) and V4-6 (api-platform + treasury). Confirmed locked-file list — none modified.
+- Inspected data-v4.ts: confirmed exports `OPS_FORECASTS` (8 forecasts, OpsForecast interface with id/resource/icon/horizon/forecast/unit/current/trend/confidence/action/autoScheduled/color), `OPS_TIMESERIES` (7 days Mon-Sun, Fri peak 9 turnovers/36 linen/38 food/5 staff), `REGIONAL_METRICS` (8 African regions: Accra/Lagos/Nairobi/Cape Town/Zanzibar/Kampala/Abidjan/Dakar with occupancy/adr/revpar/directShare/growth/properties), `SEASONAL_TRENDS` (12 months, Aug peak 88 demand), `DATA_CLOUD_INSIGHTS` (6 insights incl. lead-time shortening 14→9d, Booking.com cancellations 13%, West Africa direct +7pp, experience spend +28%), `DATA_CLOUD_STATS` (5,247 properties / 4.18M bookings / 23 regions / 14,820 insights / 184M data points / premium=true).
+- Inspected shared.tsx (StatCard/SectionHeader/StatusPill/PriorityPill), format.ts (fmtMoney/fmtMoneyShort/fmtPct/fmtDate/relativeDate).
+- Both modules were already implemented to spec by a prior (un-logged) attempt. Refined two minor spec-alignment issues only:
+  1. **predictive-ops.tsx** `confidenceColor()` — collapsed the 4-tier (emerald≥90/teal≥80/amber≥70/rose<70) into the spec-exact 3-tier (green≥80, amber 60-79, rose<60) so confidence % color matches the brief verbatim.
+  2. **data-cloud.tsx** `fmtBig()` — added `.replace(/\.0$/, '')` so round numbers render as `184M` instead of `184.0M` in the HeroBanner premium badge ("Premium subscription · 184M data points") — exact spec text.
+- Verified zero `SonnerToaster` JSX or `Toaster as SonnerToaster` imports in either file (only `import { toast } from 'sonner'`).
+- `bun run lint` → exit 0 (clean) across all 40+ modules.
+- `npx tsc --noEmit` → zero errors in predictive-ops.tsx or data-cloud.tsx.
+
+**File 1: `src/components/modules/predictive-ops.tsx` (~790 lines, `'use client'`, exports `PredictiveOpsModule`):**
+- `confidenceColor(c)`: green≥80 (#15803d), amber 60-79 (#b45309), rose<60 (#be123c) — spec-exact 3-tier.
+- `HeroBanner`: gradient hero (orange→amber→teal) with Brain icon tile, "Predictive Operations" h1 + exact spec subtitle, "AI-run ops" Sparkles badge, live "Forecasts live · refreshed 4 min ago" pulse chip.
+- `StatStrip`: 4 stat tiles (Forecasts active / Auto-scheduled actions / Items needing reorder / Confidence avg) computed live from OPS_FORECASTS — autoScheduled count, action-regex matching for reorders, avg confidence rounded.
+- `ForecastCard`: framer-motion card per OPS_FORECAST. Resource icon (gradient tile, colored border), resource name + Auto-scheduled badge (emerald, ai-pulse Zap) when autoScheduled, horizon with Clock icon. 2-col Forecast/Current grid: forecast value 2xl bold in resource color + unit label, current value with trend arrow (TrendingUp amber / TrendingDown teal / flat bar) + delta. Confidence progress bar with confidenceColor() + %. Recommended action box (orange tint, Sparkles icon). Footer button: gradient "Approve" if not autoScheduled, emerald outline "Auto ✓ scheduled" if autoScheduled — both fire toast with resource + action.
+- `OpsTimeseriesChart`: ComposedChart of OPS_TIMESERIES Mon-Sun. Bar for turnovers (orange gradient), Line for linen (violet), Line for food (amber), dashed Line for staff (teal). Fri/Sat peak badge. 4-tile 7-day totals grid below.
+- `PredictedMaintenanceCard`: amber→orange gradient. Exact spec text "Room 303 jacuzzi seal failure predicted in 12 days (72% confidence). Schedule preventive replacement to avoid a ₵2,400 damage bill + 3-day room downtime." 3-cell grid (Cost avoided ₵2,400 / Downtime avoided 3 days / Lead time 12 days). Gradient "Schedule now" button → toast "Maintenance scheduled — Room 303 jacuzzi seal replacement booked for next Tue 9 AM. FixIt Maintenance Co. notified."
+- `PeakCheckinCard`: orange→rose gradient. Exact spec text "Today's peak: 14 arrivals 2-5 PM (96% confidence)." Hourly distribution mini-bar chart (11a-6p, peak hours 2p/4p highlighted). "AI already:" list with emerald check icons — Added 1 receptionist / Sent mobile check-in links to all 14 arrivals / Prepared VIP room assignments + welcome packs.
+- `AutoReorderCard`: teal→emerald gradient. ScrollArea (max-h-72 scroll-area-fancy) with 4 reorder rows: Linen 24 sets (FreshLine, Confirmed, Today 6 PM), Eggs + bread +15% (Akwaaba Foods, Confirmed, Tomorrow 7 AM), Cleaning supplies 12 SKUs (SparkleClean, Pending supplier, 48 hrs), Bottled water 8 cases (Akwaaba, Confirmed, Today 4 PM). "View all reorder history" outline button → toast.
+- `HowItPredictsCard`: violet→purple gradient. Exact spec text "The AI learns your property's operational rhythms from 18 months of history + network patterns from 5,247 properties. It schedules resources before you'd otherwise notice the gap." 4-step grid (Learns your rhythms / Adds network patterns / Forecasts ahead / Schedules before you notice) with STEP N badges. ShieldCheck footer "Auto-scheduled actions are reversible" + "Approval preferences" button → toast.
+
+**File 2: `src/components/modules/data-cloud.tsx` (~955 lines, `'use client'`, exports `DataCloudModule`):**
+- `fmtBig(n)`: B/M/K formatter with trailing `.0` stripped (184M not 184.0M, 4.2M stays).
+- `REGION_COLORS`: per-region hex (no indigo/blue) — Accra orange, Lagos teal, Nairobi violet, Cape Town emerald, Zanzibar rose, Kampala amber, Abidjan cyan-teal, Dakar deep-orange.
+- `HeroBanner`: gradient hero with Cloud icon tile, "Hospitality Data Cloud" h1 + exact spec subtitle, Premium Crown badge "Premium subscription · 184M data points" (DATA_CLOUD_STATS.premium), live "Synced 2 hrs ago" pulse chip.
+- `StatsStrip`: 5 stat tiles (Properties 5,247 / Bookings analyzed 4.2M / Regions 23 / Insights generated 14,820 / Data points 184M) in 2/3/5-col responsive grid.
+- `RegionalMetricsBlock`: 2-col layout (1.4fr table / 1fr bar chart). Left: shadcn Table (Region/Occ./ADR/RevPAR/Direct/Growth/Props) for all 8 regions. Top growth row tinted emerald + "Growth leader" pill. Top RevPAR row tinted amber + "Top RevPAR" Crown pill. Right: "RevPAR by region" horizontal ComposedChart sorted desc, per-region Cell colors, ReferenceLine at avgRevpar rose dashed labeled "Median".
+- `SeasonalTrendsCard`: amber→orange header + "Peak: Aug (88 demand)" badge. ComposedChart 12-month: Area (demand index, orange gradient fill) + Line (occupancy %, teal) + dashed Line (ADR, violet, right-axis). ReferenceLine at Aug. Demand heat strip below — 12 colored cells with Tooltip.
+- `InsightCard` + `InsightsBlock`: 6 framer-motion insight cards (Lightbulb tile in trend color, Rising/Falling/Stable trend badge with arrow + pp/% delta, title + detail, impact line + "Apply" ghost button → toast). 1/2/3-col grid with SectionHeader + "N live insights" badge.
+- `BenchmarkExplorer`: 2-col Select grid (Region / Metric). 4-tile summary (Your value / Network avg / Your rank #N of 8 / Percentile Nth emerald). ComposedChart distribution: 8 buckets across metric range, Cell colored full-opacity if bucket includes selected region. Legend below.
+- `PremiumCard`: amber→orange→rose gradient. Crown header + "₵420/mo" amber badge. Exact spec text "Unlock full Data Cloud: 184M data points, 23 regions, 12-month forecasts, custom benchmarks. ₵420/mo." 5 perks list with CheckCircle2. Gradient "Upgrade to Premium" button → toast "Premium Data Cloud · ₵420/mo. PaySwap checkout opened".
+- `PrivacyCard`: teal→emerald header + "GDPR-aligned" badge. Exact spec text "All data is aggregated and anonymized. No individual property or guest data is ever exposed. You opt out anytime." 4-point list (Lock aggregated / Eye no individual / ShieldCheck differential privacy / Users min 30 properties per bucket). "Manage privacy" button → toast.
+
+Stage Summary:
+- Both modules `'use client'`, production TypeScript, mobile-first responsive (grid-cols-2 → md:grid-cols-3 → lg:grid-cols-4/5 patterns, sm/lg/xl breakpoints), dark-mode safe via Tailwind tokens (bg-card, text-muted-foreground, border-border) + glass/gradient accents.
+- Luxury hospitality warm palette enforced: orange #ea580c, teal #0d9488, amber/gold, rose, violet, emerald accents. **Zero indigo/blue.** (Verified — REGION_COLORS use only orange/teal/violet/emerald/rose/amber/cyan-teal/deep-orange.)
+- Touch-friendly (h-8/h-9/h-10 controls, ≥44px hit targets), hover states (framer-motion whileHover lift + staggered entrance via index*0.05 delay, group-hover blur opacity bumps), scroll-area-fancy for long lists (AutoReorderCard max-h-72).
+- Predictive Ops feels like AI genuinely running operations ahead of time: 4 Auto-scheduled badges across forecast cards, live AI-already-done list in PeakCheckinCard, 4-row AutoReorderCard queue with real supplier names + ETAs.
+- Data Cloud feels like a premium analytics product: 184M data-point premium badge, 8-region table with growth-leader/top-RevPAR highlights, RevPAR horizontal bar chart with median reference line, 12-month seasonal ComposedChart with demand heat strip, 6 insight cards with trend arrows, interactive region+metric benchmark explorer with distribution histogram + percentile rank, ₵420/mo upgrade card, GDPR-aligned privacy card.
+- Used ONLY the specified shared APIs (OPS_FORECASTS, OPS_TIMESERIES, REGIONAL_METRICS, SEASONAL_TRENDS, DATA_CLOUD_INSIGHTS, DATA_CLOUD_STATS, OpsForecast, RegionalMetric from @/lib/data-v4; fmtMoney/fmtMoneyShort/fmtPct from @/lib/format; StatCard/SectionHeader from @/components/shared; toast from sonner; shadcn ui Card/Button/Badge/Progress/Separator/ScrollArea/Tooltip/Select/Table; recharts ComposedChart/Line/Bar/Area/AreaChart/XAxis/YAxis/CartesianGrid/ResponsiveContainer/Tooltip/Legend/ReferenceLine/Cell; lucide-react; framer-motion).
+- `bun run lint` CLEAN (exit 0). `npx tsc --noEmit` — zero errors in either file.
+- Files MODIFIED (only these two): `src/components/modules/predictive-ops.tsx` (confidenceColor 3-tier alignment), `src/components/modules/data-cloud.tsx` (fmtBig trailing-.0 strip). Did NOT touch any locked files.
+- Work record saved to /agent-ctx/V4-5-full-stack-developer.md.
+- TASK COMPLETE.

@@ -1,0 +1,790 @@
+     1→'use client'
+     2→
+     3→import * as React from 'react'
+     4→import { motion } from 'framer-motion'
+     5→import { Card } from '@/components/ui/card'
+     6→import { Button } from '@/components/ui/button'
+     7→import { Badge } from '@/components/ui/badge'
+     8→import { Progress } from '@/components/ui/progress'
+     9→import { Separator } from '@/components/ui/separator'
+    10→import { ScrollArea } from '@/components/ui/scroll-area'
+    11→import {
+    12→  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
+    13→} from '@/components/ui/tooltip'
+    14→import { SectionHeader } from '@/components/shared'
+    15→import {
+    16→  OPS_FORECASTS, OPS_TIMESERIES,
+    17→  type OpsForecast,
+    18→} from '@/lib/data-v4'
+    19→import { fmtPct } from '@/lib/format'
+    20→import { toast } from 'sonner'
+    21→import { cn } from '@/lib/utils'
+    22→import {
+    23→  ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
+    24→  ResponsiveContainer, Tooltip as RTooltip, Legend,
+    25→} from 'recharts'
+    26→import {
+    27→  Brain, Sparkles, TrendingUp, TrendingDown, ArrowUpRight, ArrowRight,
+    28→  Clock, Zap, Activity, ShoppingCart, CalendarClock, CheckCircle2,
+    29→  Wrench, ShieldCheck, Users, Bell, AlertTriangle, Cpu, History,
+    30→  Gauge, Package, ClipboardCheck, Bot,
+    31→} from 'lucide-react'
+    32→
+    33→// ------------------------------------------------------------------
+    34→// helpers
+    35→// ------------------------------------------------------------------
+    36→
+    37→function confidenceColor(c: number): string {
+    38→  if (c >= 90) return '#15803d' // emerald
+    39→  if (c >= 80) return '#0d9488' // teal
+    40→  if (c >= 70) return '#b45309' // amber
+    41→  return '#be123c' // rose
+    42→}
+    43→
+    44→function trendTone(t: number): 'up' | 'down' | 'flat' {
+    45→  if (t > 0) return 'up'
+    46→  if (t < 0) return 'down'
+    47→  return 'flat'
+    48→}
+    49→
+    50→function formatForecastValue(v: number, unit: string): string {
+    51→  // Pretty-print the big numeric forecast value with its unit.
+    52→  if (v >= 1000) return `${v.toLocaleString('en-US')}`
+    53→  return `${v}`
+    54→}
+    55→
+    56→// ------------------------------------------------------------------
+    57→// Hero banner
+    58→// ------------------------------------------------------------------
+    59→
+    60→function HeroBanner() {
+    61→  return (
+    62→    <motion.div
+    63→      initial={{ opacity: 0, y: -8 }}
+    64→      animate={{ opacity: 1, y: 0 }}
+    65→      transition={{ duration: 0.45 }}
+    66→      className="relative overflow-hidden rounded-2xl border border-orange-500/25 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-teal-500/10 p-5 sm:p-6"
+    67→    >
+    68→      <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-orange-500/20 blur-3xl" />
+    69→      <div className="absolute -left-10 -bottom-10 h-40 w-40 rounded-full bg-teal-500/15 blur-3xl" />
+    70→      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    71→        <div className="flex items-start gap-3.5 min-w-0">
+    72→          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/30">
+    73→            <Brain className="h-6 w-6" />
+    74→          </div>
+    75→          <div className="min-w-0">
+    76→            <div className="flex items-center gap-2 flex-wrap mb-1">
+    77→              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Predictive Operations</h1>
+    78→              <Badge className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20">
+    79→                <Sparkles className="h-3 w-3 mr-1 ai-pulse" /> AI-run ops
+    80→              </Badge>
+    81→            </div>
+    82→            <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl">
+    83→              The AI forecasts housekeeping demand, linen usage, food inventory, utilities, staffing, and maintenance — and schedules resources proactively before you need them.
+    84→            </p>
+    85→          </div>
+    86→        </div>
+    87→        <div className="flex items-center gap-2 shrink-0">
+    88→          <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-card/60 px-3 py-2">
+    89→            <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 ai-pulse" />
+    90→            <span className="text-xs font-medium text-muted-foreground">Forecasts live · refreshed 4 min ago</span>
+    91→          </div>
+    92→        </div>
+    93→      </div>
+    94→    </motion.div>
+    95→  )
+    96→}
+    97→
+    98→// ------------------------------------------------------------------
+    99→// Stat strip
+   100→// ------------------------------------------------------------------
+   101→
+   102→function StatStrip() {
+   103→  const active = OPS_FORECASTS.length
+   104→  const autoScheduled = OPS_FORECASTS.filter(f => f.autoScheduled).length
+   105→  const reorderItems = OPS_FORECASTS.filter(f =>
+   106→    /order|increase|reorder/i.test(f.action)
+   107→  ).length
+   108→  const avgConfidence = Math.round(
+   109→    OPS_FORECASTS.reduce((a, b) => a + b.confidence, 0) / OPS_FORECASTS.length
+   110→  )
+   111→  const tiles = [
+   112→    {
+   113→      label: 'Forecasts active', value: `${active}`,
+   114→      icon: <Activity className="h-4 w-4" />, color: '#ea580c',
+   115→      sub: 'across 8 resources',
+   116→    },
+   117→    {
+   118→      label: 'Auto-scheduled actions', value: `${autoScheduled}`,
+   119→      icon: <Zap className="h-4 w-4" />, color: '#0d9488',
+   120→      sub: 'AI acted without waiting',
+   121→    },
+   122→    {
+   123→      label: 'Items needing reorder', value: `${reorderItems}`,
+   124→      icon: <ShoppingCart className="h-4 w-4" />, color: '#9333ea',
+   125→      sub: 'auto-reorder triggered',
+   126→    },
+   127→    {
+   128→      label: 'Confidence avg', value: `${avgConfidence}%`,
+   129→      icon: <Gauge className="h-4 w-4" />, color: '#b45309',
+   130→      sub: 'across all forecasts',
+   131→    },
+   132→  ]
+   133→  return (
+   134→    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+   135→      {tiles.map((t, i) => (
+   136→        <motion.div
+   137→          key={t.label}
+   138→          initial={{ opacity: 0, y: 10 }}
+   139→          animate={{ opacity: 1, y: 0 }}
+   140→          transition={{ duration: 0.3, delay: i * 0.05 }}
+   141→        >
+   142→          <Card className="relative overflow-hidden p-4 sm:p-5 gap-0 h-full">
+   143→            <div className="absolute -right-6 -top-6 h-20 w-20 rounded-full blur-2xl opacity-50" style={{ backgroundColor: t.color + '33' }} />
+   144→            <div className="relative flex items-start justify-between gap-2">
+   145→              <div className="min-w-0">
+   146→                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground truncate">{t.label}</p>
+   147→                <p className="text-2xl font-bold tabular-nums leading-tight mt-1">{t.value}</p>
+   148→                <p className="text-[10px] text-muted-foreground mt-0.5 truncate">{t.sub}</p>
+   149→              </div>
+   150→              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: t.color + '1a', color: t.color }}>
+   151→                {t.icon}
+   152→              </span>
+   153→            </div>
+   154→          </Card>
+   155→        </motion.div>
+   156→      ))}
+   157→    </div>
+   158→  )
+   159→}
+   160→
+   161→// ------------------------------------------------------------------
+   162→// Forecast card
+   163→// ------------------------------------------------------------------
+   164→
+   165→function ForecastCard({ f, index }: { f: OpsForecast; index: number }) {
+   166→  const tone = trendTone(f.trend)
+   167→  const conf = confidenceColor(f.confidence)
+   168→  const delta = f.forecast - f.current
+   169→  return (
+   170→    <motion.div
+   171→      initial={{ opacity: 0, y: 14 }}
+   172→      animate={{ opacity: 1, y: 0 }}
+   173→      transition={{ duration: 0.35, delay: Math.min(index * 0.05, 0.4) }}
+   174→    >
+   175→      <Card className="group relative overflow-hidden p-5 h-full flex flex-col gap-3 hover:border-orange-500/40 transition-colors">
+   176→        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full blur-3xl opacity-25 transition-opacity group-hover:opacity-40" style={{ backgroundColor: f.color }} />
+   177→
+   178→        {/* header */}
+   179→        <div className="relative flex items-start gap-3">
+   180→          <div
+   181→            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl bg-gradient-to-br"
+   182→            style={{
+   183→              backgroundImage: `linear-gradient(135deg, ${f.color}22, ${f.color}08)`,
+   184→              border: `1px solid ${f.color}33`,
+   185→            }}
+   186→          >
+   187→            <span aria-hidden>{f.icon}</span>
+   188→          </div>
+   189→          <div className="flex-1 min-w-0">
+   190→            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+   191→              <h3 className="text-sm font-semibold leading-tight">{f.resource}</h3>
+   192→              {f.autoScheduled && (
+   193→                <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20">
+   194→                  <Zap className="h-2.5 w-2.5 mr-1 ai-pulse" /> Auto-scheduled
+   195→                </Badge>
+   196→              )}
+   197→            </div>
+   198→            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+   199→              <Clock className="h-3 w-3" /> Horizon: <span className="font-medium text-foreground/80">{f.horizon}</span>
+   200→            </p>
+   201→          </div>
+   202→        </div>
+   203→
+   204→        {/* forecast vs current */}
+   205→        <div className="relative grid grid-cols-2 gap-2">
+   206→          <div className="rounded-lg border border-border bg-card/60 p-3">
+   207→            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Forecast</p>
+   208→            <p className="text-2xl font-bold tabular-nums leading-tight mt-0.5" style={{ color: f.color }}>
+   209→              {formatForecastValue(f.forecast, f.unit)}
+   210→            </p>
+   211→            <p className="text-[10px] text-muted-foreground mt-0.5">{f.unit}</p>
+   212→          </div>
+   213→          <div className="rounded-lg border border-border bg-card/60 p-3">
+   214→            <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Current</p>
+   215→            <p className="text-2xl font-bold tabular-nums leading-tight mt-0.5 text-foreground">
+   216→              {f.current.toLocaleString('en-US')}
+   217→            </p>
+   218→            <div className="flex items-center gap-1 mt-0.5">
+   219→              {tone === 'up' && <TrendingUp className="h-3 w-3 text-amber-500" />}
+   220→              {tone === 'down' && <TrendingDown className="h-3 w-3 text-teal-500" />}
+   221→              {tone === 'flat' && <span className="h-1 w-3 rounded-full bg-muted-foreground/40" />}
+   222→              <span className={cn(
+   223→                'text-[10px] font-medium',
+   224→                tone === 'up' && 'text-amber-600 dark:text-amber-400',
+   225→                tone === 'down' && 'text-teal-600 dark:text-teal-400',
+   226→                tone === 'flat' && 'text-muted-foreground'
+   227→              )}>
+   228→                {tone === 'flat' ? 'steady' : `${tone === 'up' ? '+' : ''}${f.trend}%`}
+   229→              </span>
+   230→              {delta !== 0 && (
+   231→                <span className="text-[10px] text-muted-foreground ml-auto">
+   232→                  {delta > 0 ? '+' : ''}{delta.toLocaleString('en-US')}
+   233→                </span>
+   234→              )}
+   235→            </div>
+   236→          </div>
+   237→        </div>
+   238→
+   239→        {/* confidence */}
+   240→        <div className="relative">
+   241→          <div className="flex items-center justify-between mb-1">
+   242→            <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Confidence</span>
+   243→            <span className="text-xs font-semibold" style={{ color: conf }}>{f.confidence}%</span>
+   244→          </div>
+   245→          <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-muted">
+   246→            <div
+   247→              className="h-full rounded-full transition-all duration-700"
+   248→              style={{ width: `${f.confidence}%`, backgroundColor: conf }}
+   249→            />
+   250→          </div>
+   251→        </div>
+   252→
+   253→        {/* recommended action */}
+   254→        <div className="relative rounded-lg border border-orange-500/20 bg-orange-500/[0.06] p-3">
+   255→          <div className="flex items-start gap-2">
+   256→            <Sparkles className="h-3.5 w-3.5 text-orange-500 shrink-0 mt-0.5" />
+   257→            <div className="min-w-0">
+   258→              <p className="text-[10px] font-semibold uppercase tracking-wide text-orange-600 dark:text-orange-400 mb-0.5">Recommended action</p>
+   259→              <p className="text-xs leading-relaxed text-foreground/90">{f.action}</p>
+   260→            </div>
+   261→          </div>
+   262→        </div>
+   263→
+   264→        {/* footer action */}
+   265→        <div className="relative mt-auto pt-1">
+   266→          {f.autoScheduled ? (
+   267→            <Button
+   268→              size="sm"
+   269→              variant="outline"
+   270→              className="w-full h-9 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+   271→              onClick={() =>
+   272→                toast.success('Auto-scheduled ✓', {
+   273→                  description: `${f.resource} — ${f.action}`,
+   274→                })
+   275→              }
+   276→            >
+   277→              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> Auto ✓ scheduled
+   278→            </Button>
+   279→          ) : (
+   280→            <Button
+   281→              size="sm"
+   282→              className="w-full h-9 bg-gradient-to-r from-orange-500 to-amber-600 hover:from-orange-600 hover:to-amber-700 text-white shadow-sm"
+   283→              onClick={() =>
+   284→                toast.success('Approved', {
+   285→                  description: `${f.resource} — ${f.action}`,
+   286→                })
+   287→              }
+   288→            >
+   289→              Approve <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+   290→            </Button>
+   291→          )}
+   292→        </div>
+   293→      </Card>
+   294→    </motion.div>
+   295→  )
+   296→}
+   297→
+   298→// ------------------------------------------------------------------
+   299→// 7-day operations forecast chart
+   300→// ------------------------------------------------------------------
+   301→
+   302→const TS_SERIES = [
+   303→  { key: 'turnovers', label: 'Turnovers', color: '#ea580c' },
+   304→  { key: 'linen',     label: 'Linen sets', color: '#9333ea' },
+   305→  { key: 'food',      label: 'Food covers', color: '#b45309' },
+   306→  { key: 'staff',     label: 'Staff peak', color: '#0d9488' },
+   307→] as const
+   308→
+   309→function OpsTimeseriesChart() {
+   310→  const peakDay = OPS_TIMESERIES.reduce((a, b) => (b.turnovers > a.turnovers ? b : a), OPS_TIMESERIES[0])
+   311→  return (
+   312→    <Card className="relative overflow-hidden p-5">
+   313→      <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-orange-500/10 blur-3xl" />
+   314→      <div className="relative">
+   315→        <div className="flex items-start justify-between gap-3 mb-4">
+   316→          <div className="flex items-center gap-2.5">
+   317→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/20">
+   318→              <CalendarClock className="h-4 w-4" />
+   319→            </div>
+   320→            <div>
+   321→              <h3 className="font-semibold text-sm">7-day operations forecast</h3>
+   322→              <p className="text-[11px] text-muted-foreground">
+   323→                Peak load <span className="font-semibold text-orange-600 dark:text-orange-400">{peakDay.day}</span> · {peakDay.turnovers} turnovers · {peakDay.linen} linen sets · {peakDay.food} food covers
+   324→              </p>
+   325→            </div>
+   326→          </div>
+   327→          <Badge variant="outline" className="hidden sm:inline-flex text-[10px] gap-1">
+   328→            <TrendingUp className="h-3 w-3 text-orange-500" /> Fri/Sat peak
+   329→          </Badge>
+   330→        </div>
+   331→
+   332→        <div className="h-72 w-full">
+   333→          <ResponsiveContainer width="100%" height="100%">
+   334→            <ComposedChart data={OPS_TIMESERIES} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+   335→              <defs>
+   336→                {TS_SERIES.map(s => (
+   337→                  <linearGradient key={s.key} id={`grad-${s.key}`} x1="0" y1="0" x2="0" y2="1">
+   338→                    <stop offset="0%" stopColor={s.color} stopOpacity={0.9} />
+   339→                    <stop offset="100%" stopColor={s.color} stopOpacity={0.55} />
+   340→                  </linearGradient>
+   341→                ))}
+   342→              </defs>
+   343→              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" vertical={false} />
+   344→              <XAxis
+   345→                dataKey="day"
+   346→                tickLine={false}
+   347→                axisLine={false}
+   348→                tick={{ fontSize: 11, fill: 'currentColor' }}
+   349→                className="text-muted-foreground"
+   350→                tickFormatter={(d: string) => d}
+   351→              />
+   352→              <YAxis
+   353→                tickLine={false}
+   354→                axisLine={false}
+   355→                tick={{ fontSize: 11, fill: 'currentColor' }}
+   356→                className="text-muted-foreground"
+   357→                width={40}
+   358→              />
+   359→              <RTooltip
+   360→                cursor={{ stroke: '#ea580c', strokeDasharray: '4 4', strokeOpacity: 0.4 }}
+   361→                contentStyle={{
+   362→                  background: 'hsl(var(--card, 0 0% 100%))',
+   363→                  border: '1px solid hsl(var(--border, 220 13% 91%))',
+   364→                  borderRadius: 12,
+   365→                  fontSize: 12,
+   366→                  padding: '8px 10px',
+   367→                }}
+   368→                labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+   369→              />
+   370→              <Legend
+   371→                iconType="circle"
+   372→                iconSize={8}
+   373→                wrapperStyle={{ fontSize: 11, paddingTop: 8 }}
+   374→              />
+   375→              <Bar
+   376→                dataKey="turnovers"
+   377→                name="Turnovers"
+   378→                fill="url(#grad-turnovers)"
+   379→                radius={[4, 4, 0, 0]}
+   380→                barSize={18}
+   381→              />
+   382→              <Line
+   383→                type="monotone"
+   384→                dataKey="linen"
+   385→                name="Linen sets"
+   386→                stroke="#9333ea"
+   387→                strokeWidth={2}
+   388→                dot={{ r: 3, fill: '#9333ea' }}
+   389→                activeDot={{ r: 5 }}
+   390→              />
+   391→              <Line
+   392→                type="monotone"
+   393→                dataKey="food"
+   394→                name="Food covers"
+   395→                stroke="#b45309"
+   396→                strokeWidth={2}
+   397→                dot={{ r: 3, fill: '#b45309' }}
+   398→                activeDot={{ r: 5 }}
+   399→              />
+   400→              <Line
+   401→                type="monotone"
+   402→                dataKey="staff"
+   403→                name="Staff peak"
+   404→                stroke="#0d9488"
+   405→                strokeWidth={2}
+   406→                strokeDasharray="4 3"
+   407→                dot={{ r: 3, fill: '#0d9488' }}
+   408→                activeDot={{ r: 5 }}
+   409→              />
+   410→            </ComposedChart>
+   411→          </ResponsiveContainer>
+   412→        </div>
+   413→
+   414→        <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
+   415→          {TS_SERIES.map(s => {
+   416→            const total = OPS_TIMESERIES.reduce((a, b) => a + (b as any)[s.key], 0)
+   417→            return (
+   418→              <div key={s.key} className="rounded-lg border border-border bg-card/50 p-2.5">
+   419→                <div className="flex items-center gap-1.5 mb-0.5">
+   420→                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
+   421→                  <span className="text-[10px] text-muted-foreground truncate">{s.label}</span>
+   422→                </div>
+   423→                <p className="text-sm font-bold tabular-nums">{total.toLocaleString('en-US')}</p>
+   424→                <p className="text-[9px] text-muted-foreground">7-day total</p>
+   425→              </div>
+   426→            )
+   427→          })}
+   428→        </div>
+   429→      </div>
+   430→    </Card>
+   431→  )
+   432→}
+   433→
+   434→// ------------------------------------------------------------------
+   435→// Predicted maintenance card
+   436→// ------------------------------------------------------------------
+   437→
+   438→function PredictedMaintenanceCard() {
+   439→  return (
+   440→    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}>
+   441→      <Card className="relative overflow-hidden p-5 h-full flex flex-col">
+   442→        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-amber-500/15 blur-3xl" />
+   443→        <div className="relative">
+   444→          <div className="flex items-start justify-between gap-2 mb-3">
+   445→            <div className="flex items-center gap-2.5">
+   446→              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20">
+   447→                <Wrench className="h-5 w-5" />
+   448→              </div>
+   449→              <div>
+   450→                <h3 className="font-semibold text-sm">Predicted maintenance</h3>
+   451→                <p className="text-[11px] text-muted-foreground">Caught 12 days before failure</p>
+   452→              </div>
+   453→            </div>
+   454→            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 hover:bg-amber-500/20">
+   455→              <AlertTriangle className="h-3 w-3 mr-1" /> 72% confidence
+   456→            </Badge>
+   457→          </div>
+   458→
+   459→          <div className="rounded-xl border border-amber-500/30 bg-amber-500/[0.06] p-4">
+   460→            <p className="text-sm leading-relaxed">
+   461→              <span className="font-semibold">Room 303 jacuzzi seal failure</span> predicted in{' '}
+   462→              <span className="font-semibold text-amber-600 dark:text-amber-400">12 days</span> (72% confidence). Schedule preventive replacement to avoid a{' '}
+   463→              <span className="font-semibold text-rose-600 dark:text-rose-400">₵2,400 damage bill</span> +{' '}
+   464→              <span className="font-semibold text-rose-600 dark:text-rose-400">3-day room downtime</span>.
+   465→            </p>
+   466→          </div>
+   467→
+   468→          <div className="grid grid-cols-3 gap-2 mt-3">
+   469→            <div className="rounded-lg border border-border bg-card/50 p-2.5 text-center">
+   470→              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Cost avoided</p>
+   471→              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">₵2,400</p>
+   472→            </div>
+   473→            <div className="rounded-lg border border-border bg-card/50 p-2.5 text-center">
+   474→              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Downtime avoided</p>
+   475→              <p className="text-base font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">3 days</p>
+   476→            </div>
+   477→            <div className="rounded-lg border border-border bg-card/50 p-2.5 text-center">
+   478→              <p className="text-[9px] uppercase tracking-wide text-muted-foreground">Lead time</p>
+   479→              <p className="text-base font-bold text-amber-600 dark:text-amber-400 mt-0.5">12 days</p>
+   480→            </div>
+   481→          </div>
+   482→        </div>
+   483→
+   484→        <div className="relative mt-auto pt-4">
+   485→          <Button
+   486→            className="w-full h-10 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-sm"
+   487→            onClick={() =>
+   488→              toast.success('Maintenance scheduled', {
+   489→                description: 'Room 303 jacuzzi seal replacement — booked for next Tue 9 AM. FixIt Maintenance Co. notified.',
+   490→              })
+   491→            }
+   492→          >
+   493→            <CalendarClock className="h-4 w-4 mr-1.5" /> Schedule now
+   494→          </Button>
+   495→        </div>
+   496→      </Card>
+   497→    </motion.div>
+   498→  )
+   499→}
+   500→
+   501→// ------------------------------------------------------------------
+   502→// Peak check-in predictor card
+   503→// ------------------------------------------------------------------
+   504→
+   505→function PeakCheckinCard() {
+   506→  const hours = [
+   507→    { h: '11a', v: 1 }, { h: '12p', v: 2 }, { h: '1p', v: 4 },
+   508→    { h: '2p', v: 5 }, { h: '3p', v: 4 }, { h: '4p', v: 5 },
+   509→    { h: '5p', v: 0 }, { h: '6p', v: 1 },
+   510→  ]
+   511→  const maxV = Math.max(...hours.map(h => h.v))
+   512→  return (
+   513→    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }}>
+   514→      <Card className="relative overflow-hidden p-5 h-full flex flex-col">
+   515→        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-orange-500/15 blur-3xl" />
+   516→        <div className="relative">
+   517→          <div className="flex items-start justify-between gap-2 mb-3">
+   518→            <div className="flex items-center gap-2.5">
+   519→              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/20">
+   520→                <CalendarClock className="h-5 w-5" />
+   521→              </div>
+   522→              <div>
+   523→                <h3 className="font-semibold text-sm">Peak check-in predictor</h3>
+   524→                <p className="text-[11px] text-muted-foreground">Today · live</p>
+   525→              </div>
+   526→            </div>
+   527→            <Badge className="bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30 hover:bg-orange-500/20">
+   528→              <Sparkles className="h-3 w-3 mr-1 ai-pulse" /> 96% confidence
+   529→            </Badge>
+   530→          </div>
+   531→
+   532→          <div className="rounded-xl border border-orange-500/30 bg-orange-500/[0.06] p-4 mb-3">
+   533→            <p className="text-sm leading-relaxed">
+   534→              Today's peak: <span className="font-bold text-orange-600 dark:text-orange-400">14 arrivals 2-5 PM</span> (96% confidence).
+   535→            </p>
+   536→          </div>
+   537→
+   538→          {/* hourly distribution mini chart */}
+   539→          <div className="flex items-end gap-1.5 h-20 mb-3">
+   540→            {hours.map(h => {
+   541→              const pct = maxV === 0 ? 0 : (h.v / maxV) * 100
+   542→              const isPeak = h.v === maxV
+   543→              return (
+   544→                <div key={h.h} className="flex-1 flex flex-col items-center gap-1">
+   545→                  <div className="w-full h-full flex items-end">
+   546→                    <div
+   547→                      className={cn(
+   548→                        'w-full rounded-t-md transition-all',
+   549→                        isPeak ? 'bg-gradient-to-t from-orange-500 to-amber-400' : 'bg-orange-500/30'
+   550→                      )}
+   551→                      style={{ height: `${Math.max(pct, 6)}%` }}
+   552→                    />
+   553→                  </div>
+   554→                  <span className="text-[8px] text-muted-foreground">{h.h}</span>
+   555→                </div>
+   556→              )
+   557→            })}
+   558→          </div>
+   559→
+   560→          {/* AI already done list */}
+   561→          <div>
+   562→            <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2 flex items-center gap-1">
+   563→              <Bot className="h-3 w-3" /> AI already:
+   564→            </p>
+   565→            <ul className="space-y-1.5">
+   566→              {[
+   567→                { icon: <Users className="h-3 w-3" />, txt: 'Added 1 receptionist for 2-5 PM' },
+   568→                { icon: <Bell className="h-3 w-3" />, txt: 'Sent mobile check-in links to all 14 arrivals' },
+   569→                { icon: <ClipboardCheck className="h-3 w-3" />, txt: 'Prepared VIP room assignments + welcome packs' },
+   570→              ].map((item, i) => (
+   571→                <li key={i} className="flex items-center gap-2 text-xs">
+   572→                  <span className="flex h-5 w-5 items-center justify-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+   573→                    {item.icon}
+   574→                  </span>
+   575→                  <span className="text-foreground/90">{item.txt}</span>
+   576→                  <CheckCircle2 className="h-3 w-3 text-emerald-500 ml-auto shrink-0" />
+   577→                </li>
+   578→              ))}
+   579→            </ul>
+   580→          </div>
+   581→        </div>
+   582→      </Card>
+   583→    </motion.div>
+   584→  )
+   585→}
+   586→
+   587→// ------------------------------------------------------------------
+   588→// Auto-reorder queue card
+   589→// ------------------------------------------------------------------
+   590→
+   591→const AUTO_REORDERS = [
+   592→  { id: 'ar-1', item: 'Linen sets', detail: '24 sets ordered from FreshLine Laundry', qty: '24 sets', supplier: 'FreshLine', status: 'Confirmed', icon: '🛏️', color: '#9333ea', eta: 'Today, 6 PM' },
+   593→  { id: 'ar-2', item: 'Eggs + bread (breakfast)', detail: 'Increased weekly order by 15% to match forecast', qty: '+15%', supplier: 'Akwaaba Foods', status: 'Confirmed', icon: '🍳', color: '#b45309', eta: 'Tomorrow, 7 AM' },
+   594→  { id: 'ar-3', item: 'Cleaning supplies', detail: 'Auto-reorder triggered — stock below 7-day forecast', qty: '12 SKUs', supplier: 'SparkleClean', status: 'Pending supplier', icon: '🧴', color: '#0d9488', eta: '48 hrs' },
+   595→  { id: 'ar-4', item: 'Bottled water', detail: 'Added 8 cases — arrivals peak today', qty: '8 cases', supplier: 'Akwaaba Foods', status: 'Confirmed', icon: '💧', color: '#0e7490', eta: 'Today, 4 PM' },
+   596→]
+   597→
+   598→function AutoReorderCard() {
+   599→  return (
+   600→    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.15 }}>
+   601→      <Card className="relative overflow-hidden p-5 h-full flex flex-col">
+   602→        <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-teal-500/10 blur-3xl" />
+   603→        <div className="relative">
+   604→          <div className="flex items-start justify-between gap-2 mb-3">
+   605→            <div className="flex items-center gap-2.5">
+   606→              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-500/20">
+   607→                <ShoppingCart className="h-5 w-5" />
+   608→              </div>
+   609→              <div>
+   610→                <h3 className="font-semibold text-sm">Auto-reorder queue</h3>
+   611→                <p className="text-[11px] text-muted-foreground">AI-ordered from preferred suppliers</p>
+   612→              </div>
+   613→            </div>
+   614→            <Badge className="bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30 hover:bg-teal-500/20">
+   615→              <Zap className="h-3 w-3 mr-1 ai-pulse" /> {AUTO_REORDERS.length} auto
+   616→            </Badge>
+   617→          </div>
+   618→
+   619→          <ScrollArea className="max-h-72 scroll-area-fancy pr-3 -mr-3">
+   620→            <div className="space-y-2.5">
+   621→              {AUTO_REORDERS.map(r => (
+   622→                <div key={r.id} className="rounded-lg border border-border bg-card/60 p-3 hover:border-orange-500/30 transition-colors">
+   623→                  <div className="flex items-start gap-3">
+   624→                    <div
+   625→                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-base bg-gradient-to-br"
+   626→                      style={{ backgroundImage: `linear-gradient(135deg, ${r.color}22, ${r.color}08)`, border: `1px solid ${r.color}33` }}
+   627→                    >
+   628→                      <span aria-hidden>{r.icon}</span>
+   629→                    </div>
+   630→                    <div className="flex-1 min-w-0">
+   631→                      <div className="flex items-center justify-between gap-2 mb-0.5">
+   632→                        <p className="text-sm font-semibold truncate">{r.item}</p>
+   633→                        <span className="text-xs font-semibold tabular-nums shrink-0" style={{ color: r.color }}>{r.qty}</span>
+   634→                      </div>
+   635→                      <p className="text-[11px] text-muted-foreground leading-snug mb-1.5">{r.detail}</p>
+   636→                      <div className="flex items-center gap-2 flex-wrap text-[10px]">
+   637→                        <Badge variant="outline" className="text-[9px] gap-1 py-0 px-1.5">
+   638→                          <Package className="h-2.5 w-2.5" /> {r.supplier}
+   639→                        </Badge>
+   640→                        <Badge
+   641→                          variant="outline"
+   642→                          className={cn(
+   643→                            'text-[9px] py-0 px-1.5',
+   644→                            r.status === 'Confirmed'
+   645→                              ? 'border-emerald-500/40 text-emerald-600 dark:text-emerald-400'
+   646→                              : 'border-amber-500/40 text-amber-600 dark:text-amber-400'
+   647→                          )}
+   648→                        >
+   649→                          {r.status === 'Confirmed' ? <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> : <Clock className="h-2.5 w-2.5 mr-0.5" />}
+   650→                          {r.status}
+   651→                        </Badge>
+   652→                        <span className="text-muted-foreground flex items-center gap-0.5">
+   653→                          <Clock className="h-2.5 w-2.5" /> {r.eta}
+   654→                        </span>
+   655→                      </div>
+   656→                    </div>
+   657→                  </div>
+   658→                </div>
+   659→              ))}
+   660→            </div>
+   661→          </ScrollArea>
+   662→        </div>
+   663→        <div className="relative mt-auto pt-3">
+   664→          <Button
+   665→            variant="outline"
+   666→            className="w-full h-9"
+   667→            onClick={() =>
+   668→              toast.success('Reorder queue synced', {
+   669→                description: 'All 4 auto-reorders tracked against inventory forecasts.',
+   670→              })
+   671→            }
+   672→          >
+   673→            <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" /> View all reorder history
+   674→          </Button>
+   675→        </div>
+   676→      </Card>
+   677→    </motion.div>
+   678→  )
+   679→}
+   680→
+   681→// ------------------------------------------------------------------
+   682→// How it predicts explainer
+   683→// ------------------------------------------------------------------
+   684→
+   685→function HowItPredictsCard() {
+   686→  const steps = [
+   687→    { icon: <History className="h-4 w-4" />, title: 'Learns your rhythms', detail: '18 months of your property history — bookings, turnovers, utility reads, maintenance logs.', color: '#ea580c' },
+   688→    { icon: <Cpu className="h-4 w-4" />, title: 'Adds network patterns', detail: 'Cross-references with 5,247 properties to find seasonal + day-of-week rhythms you can\'t see alone.', color: '#0d9488' },
+   689→    { icon: <Brain className="h-4 w-4" />, title: 'Forecasts ahead', detail: 'Projects demand 3-14 days out for every resource — housekeeping, linen, food, utilities, staffing, maintenance.', color: '#9333ea' },
+   690→    { icon: <Zap className="h-4 w-4" />, title: 'Schedules before you notice', detail: 'Auto-schedules staff, fires reorders, books maintenance — only pinging you when approval is needed.', color: '#b45309' },
+   691→  ]
+   692→  return (
+   693→    <Card className="relative overflow-hidden p-5">
+   694→      <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-violet-500/10 blur-3xl" />
+   695→      <div className="relative">
+   696→        <div className="flex items-center gap-2.5 mb-4">
+   697→          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20">
+   698→            <Brain className="h-4 w-4" />
+   699→          </div>
+   700→          <div>
+   701→            <h3 className="font-semibold text-sm">How it predicts</h3>
+   702→            <p className="text-[11px] text-muted-foreground">The intelligence behind proactive operations</p>
+   703→          </div>
+   704→        </div>
+   705→
+   706→        <p className="text-sm leading-relaxed text-muted-foreground mb-4">
+   707→          The AI learns your property's operational rhythms from <span className="font-semibold text-foreground">18 months of history</span> + network patterns from <span className="font-semibold text-foreground">5,247 properties</span>. It schedules resources before you'd otherwise notice the gap.
+   708→        </p>
+   709→
+   710→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+   711→          {steps.map((s, i) => (
+   712→            <div key={s.title} className="relative rounded-lg border border-border bg-card/50 p-3">
+   713→              <div className="flex items-center justify-between mb-1.5">
+   714→                <span
+   715→                  className="flex h-7 w-7 items-center justify-center rounded-md"
+   716→                  style={{ backgroundColor: s.color + '1a', color: s.color }}
+   717→                >
+   718→                  {s.icon}
+   719→                </span>
+   720→                <span className="text-[10px] font-bold text-muted-foreground">STEP {i + 1}</span>
+   721→              </div>
+   722→              <p className="text-xs font-semibold mb-0.5">{s.title}</p>
+   723→              <p className="text-[11px] text-muted-foreground leading-relaxed">{s.detail}</p>
+   724→            </div>
+   725→          ))}
+   726→        </div>
+   727→
+   728→        <Separator className="my-4" />
+   729→
+   730→        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   731→          <div className="flex items-center gap-3">
+   732→            <ShieldCheck className="h-4 w-4 text-teal-500 shrink-0" />
+   733→            <p className="text-xs text-muted-foreground">
+   734→              Auto-scheduled actions are <span className="font-semibold text-foreground">reversible</span>. You always get a notification, and you can require approval for any category.
+   735→            </p>
+   736→          </div>
+   737→          <Button
+   738→            variant="outline"
+   739→            size="sm"
+   740→            className="shrink-0 h-8"
+   741→            onClick={() =>
+   742→              toast.success('Approval preferences opened', {
+   743→                description: 'You can require approval for staffing, reorders, maintenance, or all of the above.',
+   744→              })
+   745→            }
+   746→          >
+   747→            <ArrowUpRight className="h-3.5 w-3.5 mr-1" /> Approval preferences
+   748→          </Button>
+   749→        </div>
+   750→      </div>
+   751→    </Card>
+   752→  )
+   753→}
+   754→
+   755→// ------------------------------------------------------------------
+   756→// main module
+   757→// ------------------------------------------------------------------
+   758→
+   759→export function PredictiveOpsModule() {
+   760→  return (
+   761→    <TooltipProvider delayDuration={250}>
+   762→      <div className="space-y-6">
+   763→        <HeroBanner />
+   764→        <StatStrip />
+   765→
+   766→        <SectionHeader
+   767→          title="Resource forecasts"
+   768→          description="The AI watches every operational resource and surfaces what needs attention."
+   769→        />
+   770→
+   771→        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
+   772→          {OPS_FORECASTS.map((f, i) => (
+   773→            <ForecastCard key={f.id} f={f} index={i} />
+   774→          ))}
+   775→        </div>
+   776→
+   777→        <OpsTimeseriesChart />
+   778→
+   779→        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+   780→          <PredictedMaintenanceCard />
+   781→          <PeakCheckinCard />
+   782→          <AutoReorderCard />
+   783→        </div>
+   784→
+   785→        <HowItPredictsCard />
+   786→      </div>
+   787→    </TooltipProvider>
+   788→  )
+   789→}
+   790→

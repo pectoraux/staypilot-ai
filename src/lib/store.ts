@@ -3,15 +3,19 @@
 import { create } from 'zustand'
 
 export type ModuleKey =
+  | 'outcome-goals' | 'autonomous-engine'
   | 'mission-control' | 'missions' | 'opportunities' | 'agents' | 'insights' | 'copilot'
-  | 'network-intelligence' | 'benchmarking' | 'ai-marketplace' | 'guest-network'
+  | 'network-intelligence' | 'benchmarking' | 'ai-marketplace' | 'digital-employees' | 'guest-network'
   | 'digital-twin' | 'knowledge-graph' | 'predictions' | 'segmentation' | 'funnel'
-  | 'reputation-intel' | 'property-brain' | 'events'
+  | 'reputation-intel' | 'property-brain' | 'events' | 'predictive-ops'
+  | 'supplier-network'
+  | 'data-cloud'
   | 'staff-os'
   | 'calendar' | 'reservations' | 'housekeeping' | 'maintenance'
   | 'guests' | 'loyalty' | 'concierge'
   | 'marketing' | 'experiments' | 'booking-engine' | 'reputation' | 'corporate' | 'experiences'
-  | 'revenue' | 'competitors' | 'channels' | 'direct-intel' | 'payments' | 'finance'
+  | 'revenue' | 'competitors' | 'channels' | 'direct-intel' | 'payments' | 'treasury' | 'finance'
+  | 'api-platform'
   | 'multi-property' | 'website-builder' | 'marketplace'
 
 interface AppState {
@@ -26,7 +30,7 @@ interface AppState {
 }
 
 export const useApp = create<AppState>((set) => ({
-  activeModule: 'mission-control',
+  activeModule: 'outcome-goals',
   selectedGuestId: null,
   sidebarOpen: false,
   copilotOpen: false,

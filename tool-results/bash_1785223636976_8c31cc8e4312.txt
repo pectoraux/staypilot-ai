@@ -1,0 +1,174 @@
+- **events.tsx** (`EventsModule`, ~655 lines, `'use client'`):
+  * Header: gradient banner (orange→teal→amber), "Event-Driven Platform · V3" Webhook pill, exact title/subtitle as specified, two glass KPI chips (bus latency 12ms, uptime 99.98%)
+  * 4 StatCards: Event types (10, brand Boxes), Active automations (9/10, gold Zap +6%), Events processed today 4,280 (teal Activity +14%), Automations triggered today 11,240 (violet Radio +9%)
+  * ArchitectureCard: orange-gradient banner with Workflow pill, "A central event bus — decoupled by design" headline, full architecture text, example callout card (GuestBooked → welcome email + housekeeping VIP prep + airport pickup offer + loyalty enrollment, all parallel — exactly as specified)
+  * EventTypesCatalog: responsive grid (2/3/5 cols) of all 10 EVENT_TYPES. Each card: emoji icon tile tinted by type.color, type name (colored), description, subscriber count + automation count. Selected card has orange ring + pulse dot. Clicking updates EventFlowDiagram via `selected` state
+  * EventFlowDiagram: 2-col layout (180px event node + flex automation list). Event node: colored dashed border, big icon tile, type+description. Automation list: each row ArrowRight + amber Zap tile + name + runs/avgTime + Active/Paused chip (emerald/slate). Framer-motion stagger on automation rows. Footer note about parallel firing. Empty-state when no subscribers
+  * LiveEventStream: real-time feed. Header: pulsing emerald dot (animate-ping), "Live event stream", "Streaming · N events", Pause/Resume toggle button (emerald-default when paused, outline when live). ScrollArea max-h 560px. setInterval (4.5s) inserts synthetic events via makeLiveEvent() using LIVE_PAYLOADS map keyed by event type — cycles through GuestBooked/Cancelled/CheckedIn/CheckedOut/ReviewReceived/CampaignLaunched/OpportunityDetected/PriceChanged/RoomUnavailable/MaintenanceCompleted with realistic payloads + random sources + live-triggered automation chips derived from AUTOMATIONS. Each LiveEventRow: colored icon tile, type (colored), source badge, optional NEW badge + animate-ping dot on newest, timestamp, payload, → triggered: chips (amber Zap + automation name). AnimatePresence with layout animations for smooth insertion
+  * AutomationsRegistry: shadcn Table with columns Automation (Zap icon + name), Trigger event (colored badge with emoji), Enabled (Switch — toggle updates state + fires toast with new state), Total runs (tabular-nums), Avg exec. Header shows active/total/total-runs summary. "Create automation" button (orange) opens Dialog with name Input + trigger Select (all 10 event types with icon+description). Submit validates (toast.error if missing) and adds new automation to top of list + toast.success
+  * Footer note: decoupled-bus explainer with Gauge icon
+- Cleanup: removed unused imports (BarChart, Bar, Progress, Tooltip primitives, SectionHeader, fmtPct in reputation-intel; Separator, Sparkles, Bell, ChevronRight, relativeAgeMs in events). Aliased `Toaster as SonnerToaster` to match guests.tsx pattern (ui/sonner exports `Toaster`).
+- Lint: `bun run lint` → exit 0, clean. No errors in either file.
+- Compile: dev.log initially showed `Export SonnerToaster doesn't exist in target module` error (500) on first compile — fixed by aliasing `import { Toaster as SonnerToaster }`. After fix: `✓ Compiled in 192ms` — no remaining errors.
+
+Stage Summary:
+- Both modules production-ready, `'use client'`, exports match registry expectations (ReputationIntelModule / EventsModule)
+- Luxury hospitality warm palette only (orange #ea580c, teal #0d9488, amber #b45309, rose #be123c, violet #9333ea, emerald #15803d, slate, gold). NO indigo/blue
+- Dark-mode safe via Tailwind tokens (bg-card/text-muted-foreground/border-border + hsl(var(--...)) in recharts)
+- Responsive mobile-first (grid-cols-2 → lg:grid-cols-4 stats, 2/3/5 catalog, lg:grid-cols-2 for feed+diagram, stacks gracefully on mobile)
+- Touch-friendly (h-7/h-8/h-9 controls, ≥44px hit targets), hover states, framer-motion entrances + AnimatePresence transitions
+- Visceral "feedback becomes action" flow in ReputationIntel: InsightCard toast → ImprovementProjects kanban → Advance button moves projects through Proposed→In Progress→Done with motion transitions
+- Live event stream pulses with animate-ping on newest, NEW badge, Pause/Resume toggle, auto-inserts synthetic events every 4.5s
+- Files MODIFIED (only these two): src/components/modules/reputation-intel.tsx, src/components/modules/events.tsx. Did NOT touch any locked file.
+- Work record saved to /agent-ctx/V3-6-full-stack-developer.md
+
+---
+Task ID: V3-5
+Agent: full-stack-developer
+Task: Build two StayPilot AI V3 modules — Hospitality AI Marketplace (third-party AI capabilities) + Property Brain (per-property AI training with feedback loop)
+
+Work Log:
+- Read worklog.md (V2-0 → V3-6 entries) to align on shared API surface, locked-file list, and design tokens. Confirmed locked files untouched: registry.tsx, shared.tsx, data.ts, data-v2.ts, data-v3.ts, format.ts, store.ts, nav.ts, app-shell.tsx, page.tsx, layout.tsx, globals.css, api/ai/route.ts, mission-control.tsx, copilot.tsx, copilot-palette.tsx.
+- Read src/lib/data-v3.ts → confirmed exports AICapability, AI_CAPABILITIES (8 capabilities), AI_MARKETPLACE_CATEGORIES (8 categories), BrainConfig, PROPERTY_BRAIN (8 config cards), BRAIN_LEARNING_PROGRESS (overall 78% + 6 areas + 5 recent learnings).
+- Read src/components/shared.tsx (StatCard, SectionHeader, StatusPill signatures + accent palette), src/lib/format.ts (fmtMoney/Short/Pct), src/components/modules/{marketplace.tsx, predictions.tsx, digital-twin.tsx} for design conventions, src/lib/data.ts AI_AGENTS to map capabilities → in-house workforce agents.
+- Read shadcn ui/select.tsx, ui/tabs.tsx, ui/radio-group.tsx, ui/progress.tsx signatures for correct API usage.
+
+File 1 — src/components/modules/ai-marketplace.tsx (AIMarketplaceModule):
+- `'use client'`, ~592 lines, warm luxury palette (orange #ea580c, amber, teal #0d9488, emerald, rose, violet), NO indigo/blue. Dark-mode safe via Tailwind tokens (bg-card, text-muted-foreground, border-border) + dark: variants. Responsive mobile-first (1→2→3→4 cols). Framer-motion entrances + AnimatePresence on capability grid (popLayout). Sonner toast feedback. Hover states (hover:shadow-lg, hover:-translate-y-0.5 on cards).
+- Header via shared SectionHeader: "Hospitality AI Marketplace" + subtitle "Install AI capabilities built by third-party developers. One click. StayPilot orchestrates them with your workforce." + Store-icon capability-count badge.
+- Stats row (4 StatCards): installed count (teal), available capabilities (brand/orange), avg rating (gold/amber ★), total active installs across network (violet, fmtMoneyShort).
+- Category filter (All + 8 categories from AI_MARKETPLACE_CATEGORIES) — horizontally scrollable pill buttons with per-category lucide icons (TrendingUp, Map, Utensils, Sparkles, ShieldCheck, MessageCircle, Flame, Cpu) and live count chips. Active state = orange→amber gradient.
+- Sort toggle (Trending / Top rated) — segmented control, sort by installs desc or rating desc; installed capabilities always bubble to top within each sort bucket.
+- CapabilityCard (8 of them): gradient header tile using capability.color (linear-gradient with white radial overlay), emoji icon in white/20 backdrop-blur tile, category badge top-right, "Installed" emerald pill when installed, name + developer + "1st-party" Crown badge for StayPilot Labs, "Verified" teal BadgeCheck pill (with tooltip) when verified, Stars rating + numeric rating + Download-icon installs count, 2-line description, capability chips, separator, price + Install/Installed✓ toggle button (orange→amber gradient when uninstalled, emerald outline when installed).
+- Install toggle is local React state (Record<id, boolean>) seeded from AI_CAPABILITIES[i].installed. Toast on install: "Installed — StayPilot will orchestrate this with your AI workforce" with description naming the collaborating in-house agent. Toast on uninstall: "Capability removed".
+- AIOrchestrationCard (orange-bordered, gradient blur accent): verbatim spec text about RevMax Pricing → Revenue Director agent and LocalTour Concierge → Guest Relations agent. Below: dynamic list pairing each installed capability with its matching in-house workforce agent (capability icon → ArrowRight → agent avatar tile with agent name + role). CAPABILITY_AGENT_MAP maps all 8 capability IDs to actual AI_AGENTS from data.ts (Kofi, Yaw, Adwoa, Efua, Ama, Kofi Jr.). Empty state: dashed-border "Install a capability to see how StayPilot orchestrates it".
+- BecomeDeveloperCard (teal/emerald gradient): "Build an AI capability for hospitality. Reach 5,247 properties. Earn 70% revenue share." + 3 mini-stat tiles (5,247 properties / 184K guests / 70% revenue share) + "Start building" button → toast "Developer portal opening".
+
+File 2 — src/components/modules/property-brain.tsx (PropertyBrainModule):
+- `'use client'`, ~775 lines, same warm palette. Framer-motion entrances (staggered by index), SVG progress ring with animated stroke, recharts RadarChart for learning coverage. Sonner toasts on every feedback action and config edit. Responsive 1→2→3→4 cols. Touch-friendly (≥44px buttons), hover states throughout.
+- Header: "Property Brain" + spec subtitle. Action: "Export brain" button (toast) + "Reset brain" rose-outline button (toast).
+- Stats row (4 StatCards): brain maturity 78% (brand/orange, Brain icon), samples learned 4,580 (teal, Activity icon), areas tracked 6 (violet, Layers icon), feedback actions 5 awaiting correct/not-quite (gold, GraduationCap icon).
+- Big SVG ProgressRing (168px) for overall 78% brain maturity: animated strokeDashoffset over 1.2s, orange→amber→teal gradient stroke, centered gradient-text "78%" + "Brain maturity" + "learning every day". Surrounded by StatusPill "Active" (emerald) + "+6% this week" Zap badge.
+- BrainRadar (recharts RadarChart, h-64): 6 axes (Brand Voice, Guest Preferences, Pricing Patterns, Local Knowledge, Service Recovery, Operational Routines), 0-100 domain, PolarGrid + PolarAngleAxis + PolarRadiusAxis, Radar with orange→teal gradient fill at 0.55→0.35 opacity, animated 900ms.
+- ByAreaBreakdown card: 6 progress bars in 2-col grid, each with colored dot, area name, sample count (e.g. "1,240 samples"), % value in area's accent color, animated motion.div bar.
+- RecentLearnings timeline (the KEY feedback-loop feature): vertical rail with status dots (orange pending / emerald correct / rose not-quite). For each of 5 recent learnings: learning text + relative time + "% confidence" pill (orange, tooltiped) + Correct/Not-quite buttons (emerald/rose outline). Local judgements state: once judged, buttons replaced with "Marked correct" / "Marked not quite" verdict and dot color changes. Toast on correct: "Marked correct — brain reinforced" with truncated learning text. Toast on not-quite: "Marked not quite — brain will re-learn".
+- Brain configuration grid (8 cards from PROPERTY_BRAIN): each card has per-category icon (Volume2/Tag/ArrowUpCircle/ConciergeBell/MapPin/Truck/AlertTriangle/Gauge), label + category subtitle, "AI-learned" violet badge or "Manual" amber badge, dashed-border "Learned value" quote box, then either a Select (for optioned configs — brand-voice, discount-policy, upgrade-policy, service-style, response-speed) with "Use AI-learned value" + 4 options, OR a Textarea (for freeform configs — local-recs, suppliers, escalation) pre-filled with current value + "Save override" button. Editing fires toast "Brain updated — AI will apply this going forward". When an override is active, an amber "Override active" hint with Zap icon appears. Examples (where provided) shown as italic orange-bordered quotes below a separator.
+- BrandVoiceSamples card (teal gradient, ScrollArea max-h-80): 4 AI-drafted sample messages (WhatsApp welcome, Email post-stay, SMS service recovery, In-app upsell) in the learned warm Ghanaian "Akwaaba" brand voice. Each is a bordered card with channel badge + "AI-drafted" violet sparkle tag + italic message body.
+- HowBrainLearns card (violet→purple→orange gradient): verbatim spec explainer about decisions approved/rejected, guest interactions, operational patterns, "autonomously". Below: 4 icon+text rows (ThumbsUp feedback, Check approvals, Activity patterns, ShieldCheck data-portability) each in a bordered bg-background/60 tile with category-colored icon.
+- All shared APIs consumed as specified: AI_CAPABILITIES, AI_MARKETPLACE_CATEGORIES, PROPERTY_BRAIN, BRAIN_LEARNING_PROGRESS from @/lib/data-v3; fmtMoneyShort (File 1 stats), fmtPct (File 2 ring/bars/areas) from @/lib/format; StatCard, SectionHeader, StatusPill from @/components/shared; toast from sonner. shadcn ui: card, button, badge, separator, scroll-area, tooltip, textarea, select (File 2). recharts: Radar/RadarChart/PolarGrid/PolarAngleAxis/PolarRadiusAxis/ResponsiveContainer (File 2). lucide-react: Store/Star/Check/Plus/Sparkles/Zap/BadgeCheck/Crown/Bot/Download/Flame/Filter/Code2/Users/Boxes/Wand2/TrendingUp/ArrowRight/Map/Utensils/ShieldCheck/MessageCircle/Cpu (File 1) and Brain/Sparkles/Check/X/ThumbsUp/ThumbsDown/MessageSquareQuote/RotateCcw/Download/Zap/GraduationCap/Activity/Layers/Clock/Volume2/Tag/ArrowUpCircle/ConciergeBell/MapPin/Truck/AlertTriangle/Gauge/ShieldCheck (File 2). framer-motion: motion + AnimatePresence (File 1), motion (File 2). types: AICapability, BrainConfig from @/lib/data-v3.
+- Design rules met: warm luxury palette (NO indigo/blue), dark-mode safe via Tailwind tokens + dark: variants, Property Brain feedback buttons are the centerpiece conveying "AI learns YOUR business", responsive mobile-first, touch-friendly (≥44px buttons via h-9/h-11 + size-sm), hover states everywhere, framer-motion staggered entrances, sonner toast feedback on every interaction.
+
+### Verification
+- `bun run lint` → exit 0 (clean, 0 errors, 0 warnings) across entire project — both before and after final import cleanup.
+- Dev server (auto-started) compiled both modules cleanly: `GET /?module=ai-marketplace 200 in 166ms (compile: 7ms, render: 159ms)` and `GET /?module=property-brain 200 in 265ms (compile: 22ms, render: 243ms)` — zero compile errors, zero runtime errors in dev.log.
+- No build run. No test code written.
+
+## Stage Summary
+- Two V3 modules fully built and verified:
+  - `src/components/modules/ai-marketplace.tsx` (AIMarketplaceModule, ~592 lines, `'use client'`, production TypeScript) — 8 third-party AI capabilities across 8 categories, install/uninstall with toast + emerald Installed badge, AI orchestration card mapping installed capabilities to in-house workforce agents, Become-a-developer card with 70% revenue share pitch, Trending/Top-rated sort toggle.
+  - `src/components/modules/property-brain.tsx` (PropertyBrainModule, ~775 lines, `'use client'`, production TypeScript) — animated SVG progress ring (78%), recharts RadarChart of 6 learning areas, by-area breakdown bars with sample counts, recent-learnings timeline with Correct/Not-quite feedback buttons (the training loop), 8 editable brain-config cards (Select for optioned, Textarea for freeform) firing "Brain updated" toasts, brand voice samples card, "How the brain learns" explainer, Export/Reset brain actions.
+- All specified shared APIs consumed (data-v3, format, shared, sonner, shadcn ui, recharts, lucide-react, framer-motion).
+- Warm luxury palette throughout (orange #ea580c, amber, teal #0d9488, emerald, rose, violet) — NO indigo/blue.
+- Dark-mode safe (app defaults dark) via Tailwind tokens + dark: variants.
+- Responsive mobile-first (1→2→3→4 cols where appropriate, horizontally-scrollable category filter).
+- Touch-friendly (≥44px hit targets), hover states, framer-motion staggered entrances, sonner toast feedback on every interaction.
+- Locked files: NONE modified. Only the two target module files were written.
+- Lint clean. Dev server compiled & served both modules (200 responses, no errors). No build run. No test code.
+
+---
+Task ID: V3-8
+Agent: full-stack-developer
+Task: Build ONE V3 module — `src/components/modules/payments.tsx` → `PaymentsModule` (Payments & Financial Infrastructure · PaySwap-powered).
+
+Work Log:
+- Read worklog.md (V1+V2+V3 history), data-v3.ts (PAYMENT_TRANSACTIONS, PAYMENT_STATS, PAYMENT_FLOWS, EMBEDDED_FINANCING, COMMISSION_RECONCILIATION + PaymentTransaction interface), format.ts, shared.tsx (StatCard/SectionHeader/StatusPill), finance.tsx (recharts style reference), layout.tsx (radix Toaster only — sonner Toaster needs module-level mount), globals.css (scroll-area-fancy/glass/text-gradient-brand/ai-pulse tokens). Confirmed locked files: registry.tsx, shared.tsx, data.ts, data-v2.ts, data-v3.ts, format.ts, store.ts, nav.ts, app-shell.tsx, page.tsx, layout.tsx, globals.css, api/ai/route.ts, mission-control.tsx, copilot.tsx, copilot-palette.tsx — none modified. registry.tsx already lazy-imports `./payments` → `m.PaymentsModule` so no registry change.
+- Overwrote `src/components/modules/payments.tsx` (~908 lines, `'use client'`). Components:
+  * **TYPE_TOKEN / STATUS_TOKEN / REC_STATUS_TOKEN** typed color maps — tx types booking=teal/ancillary=amber/split=violet/escrow=slate/payout=orange/refund=rose/commission=emerald; statuses completed=emerald/pending=amber/escrow-held=slate/failed=rose; reconciliation matched=emerald/shortfall=rose/pending=amber.
+  * **PROCESSED_OVER_TIME** mock 9-month series (Jan→Sep, processed/payouts/refunds trending up to ₵486K MTD).
+  * **PaySwapBadge** gradient pill (Sparkles + "PaySwap").
+  * **PaymentsHeader**: gradient hero (orange/amber/rose) — "Payments · Powered by PaySwap" with text-gradient-brand accent + PaySwap badge + subtitle (full feature list: direct checkout, split payments, escrow, multi-currency, commission reconciliation, payouts, guest wallets, embedded financing) + live emerald pulse dot + "Export settlement" button (sonner toast).
+  * **PaymentStatsGrid**: 8-tile 2/4-col grid — 7 StatCards (Processed MTD, Commission Reconciled, Escrow Held, Payouts MTD, Refunds MTD, Fraud Blocked, PaySwap Share) + custom Multi-currency card showing 6 currency chips (GHS/USD/EUR/GBP/NGN/KES).
+  * **PaymentFlowCard + PaymentFlowsGrid**: 8-card 4-col grid for all PAYMENT_FLOWS — emoji icon tile colored per flow, name + line-clamp-2 description, Volume MTD (fmtMoneyShort) + Share %, Progress bar (skipped when 0), status pill (active=emerald/offered=violet), Manage button (sonner toast). Embedded financing card (pf-8) highlighted as upsell — violet border + gradient bg + "Upsell" badge + "Explore" CTA. Framer-motion entrance + hover lift.
+  * **EmbeddedFinancingCard**: prominent gradient-banner card (violet/orange/amber) — Landmark icon, "Pre-qualified" badge, "PaySwap offers ₵120,000 working capital based on your 6 months of cash-flow history." Apply-now button (violet→orange gradient, sonner success toast with terms). Terms strip (Offer amount / APR 9.5% / Term 24mo / Monthly payment ₵5,500) in 4-col grid. Use-cases grid (Room renovations, Pool construction, Solar installation, New property acquisition — each with colored lucide icon). Approval chance card — emerald-bordered, "94%" big number, "based on cash-flow signals".
+  * **VolumeByFlowDonut**: recharts PieChart donut of PAYMENT_FLOWS (volume>0), warm-only palette, total in header, scrollable legend with % share.
+  * **ProcessedOverTimeChart**: recharts AreaChart — 3 areas (processed=orange, payouts=teal, refunds=rose) with gradient fills, CartesianGrid, custom Tooltip with fmtMoney formatter, legend strip.
+  * **GuestWalletsCard**: amber/orange gradient — Wallet icon, "Network-wide" badge, 3 KPIs (64 active wallets, ₵12.4K total held, 312 redemptions/mo), redeemable-on chips (Stays/Experiences/Dining/Spa/Transfers).
+  * **FraudPreventionCard**: rose/amber gradient — Shield icon, "FraudGuard blocked 4 attempts — ₵8,200 saved", 3 fraud rows (Card testing / Chargeback risk / Fake reviews) with colored icons + count badges.
+  * **TransactionsTable**: Card with sticky header + scroll-area-fancy body (max-h-28rem). Search-by-guest Input + Filter-by-type Select (all + 7 types). Columns: Guest/Entity (initials avatar colored by type hex), Amount (mono, refund=rose with −), Method, Type (colored pill), Status (bespoke colored pill), Date, Source. Showing-X-of-Y counter. Empty-state row.
+  * **CommissionReconciliationTable**: Card with "Auto-reconcile" button (emerald→teal gradient, sonner success toast with shortfall detail). Totals strip (Expected/Received/Shortfall — shortfall cell rose-tinted). Table of 4 OTAs with status icons (matched=CheckCircle2/shortfall=AlertTriangle/pending=RefreshCw). Shortfall rows tinted rose.
+  * **EcosystemFooter**: orange/teal gradient blur card — PiggyBank icon, "StayPilot + PaySwap = the operating system + the financial layer" with text-gradient-brand accent, full defensible-advantage messaging, "Open PaySwap console" button (sonner info toast).
+  * **PaymentsModule** main: wraps in `<TooltipProvider delayDuration={200}>`, vertical stack space-y-6, mounts `<SonnerToaster position="top-right" richColors closeButton />`.
+- Design: warm luxury palette ONLY (orange #ea580c, teal #0d9488, amber #b45309, rose #be123c, violet #9333ea, emerald #15803d, gold #a16207, slate #6b7280). NO indigo/blue. Dark-mode safe via Tailwind tokens + dark: variants. Responsive (1→2→4 col grids). Touch-friendly (≥44px targets). Hover states everywhere. Framer-motion entrances on flow cards + embedded financing.
+
+Verification:
+- `bun run lint` → exit 0, clean across the whole project.
+- `npx tsc --noEmit --skipLibCheck -p tsconfig.json` → zero errors in payments.tsx.
+- Dev server restarted `bun run dev`; `GET / 200` confirmed (compile 19.2s, render 1.8s) after registry recompiled. (Note: a transient `reputation-intel.tsx` import bug in another agent's parallel work was concurrently fixed by that agent; not in this task's scope.)
+
+Stage Summary:
+- `src/components/modules/payments.tsx` (~908 lines) fully replaces the stub; exports `PaymentsModule`. `'use client'`, production TypeScript, no test code, no build run.
+- Only `src/components/modules/payments.tsx` modified — all locked files untouched.
+- Shared APIs consumed exactly as specified: PAYMENT_TRANSACTIONS, PAYMENT_STATS, PAYMENT_FLOWS, EMBEDDED_FINANCING, COMMISSION_RECONCILIATION + PaymentTransaction type from @/lib/data-v3; fmtMoney/fmtMoneyShort/fmtPct/initials from @/lib/format; StatCard/SectionHeader from @/components/shared; shadcn Card/Button/Badge/Progress/Input/Table/Select/Tooltip; recharts PieChart/Pie/Cell/AreaChart/Area/XAxis/YAxis/CartesianGrid/Tooltip; lucide-react; framer-motion; sonner.
+- Fintech-grade trustworthy feel: warm palette, mono-spaced amounts, colored type tokens, escrow/shortfall highlighting, fraud prevention, working-capital upsell, ecosystem footer messaging.
+- Embedded-financing offer feels like a real credit offer: pre-qualified badge, big offer amount, terms strip, 4 use cases, 94% approval-chance card, Apply-now CTA with success toast.
+- Work record saved to /agent-ctx/V3-8-full-stack-developer.md.
+- TASK COMPLETE.
+
+---
+Task ID: V3-4
+Agent: full-stack-developer
+Task: Build three StayPilot AI V3 network modules — Network Intelligence (patterns from 5,247 properties), AI Benchmarking (where you stand vs the network), Guest Lifetime Network (cross-property referrals + shared loyalty)
+
+Work Log:
+- Read worklog.md (V1+V2+V3-0 foundation), data-v3.ts (NETWORK_PATTERNS, NETWORK_STATS, BENCHMARKS, BENCHMARK_INSIGHTS, NETWORK_GUESTS, CROSS_PROPERTY_REFERRALS, NETWORK_LOYALTY + NetworkPattern/Benchmark/NetworkGuest types), format.ts (fmtMoney, fmtMoneyShort, initials), shared.tsx (SectionHeader, TierBadge), digital-twin.tsx (design conventions), registry.tsx (confirmed module IDs: network-intelligence, benchmarking, guest-network via lazy named exports). Confirmed locked-file list — none modified.
+- All three modules `'use client'`, warm luxury palette (orange #ea580c / teal #0d9488 / amber #b45309 / rose #be123c / violet #9333ea / emerald #15833d / cyan #0e7490 / gold #c2410c), NO indigo/blue, dark-mode safe via Tailwind tokens + dark: variants, responsive mobile-first, framer-motion entrances, sonner toast feedback, recharts for distribution curve, reuse of shared SectionHeader/TierBadge + fmt helpers + shadcn ui (Card/Button/Badge/Separator/Table/Avatar/Tooltip).
+- File 1 network-intelligence.tsx → NetworkIntelligenceModule: header + live badge + refresh; prominent contribution badge ("You contribute 18,400 data points · Top 12% contributor"); 6-tile network stats strip (properties/bookings/countries/insights/your data/your rank); "How the network works" 4-step explainer with verbatim copy; network patterns centerpiece with category pill filter (all/demand/pricing/promotions/ota-quality/segments/events/staffing/ancillary) and rich pattern cards (icon, category+confidence badges, title, insight, Network-vs-You comparison row with arrow, orange recommendation box, footer with properties contributing + emerald impact + "Apply this" toast button); "Your contribution" card with privacy reassurance banner + stacked data-points breakdown bar + privacy checklist; network reach card with countries/cities + regional distribution bars.
+- File 2 benchmarking.tsx → BenchmarkingModule: header + avg-percentile badge + recalculate; 3-tile quartile summary (top/mid/bottom counters); 6 insight banner cards (BENCHMARK_INSIGHTS, tone-colored success/warning/info); benchmark breakdown grid (all 10 BENCHMARKS) with custom SVG semicircle percentile gauge + horizontal comparison bar (your value fill + network avg line + top 10% star marker) + quartile badge (green ≥75 / amber 25-74 / rose <25) + insight, click-to-select; recharts AreaChart distribution curve (pseudo-normal bell generated from networkAvg + networkTop10 spread) with ReferenceLine for network avg, ReferenceLine for top 10%, ReferenceDot for "You" anchored to curve density, 4 stat tiles + insight; peer comparison card ("Compared to 1,240 similar boutique guest houses in West Africa"); "Actions to climb the rankings" card with 3 weakest benchmarks (current→goal + percentile) + generate-climb-plan toast.
+- File 3 guest-network.tsx → GuestNetworkModule: header + live badge + sync; shared-points banner ("Shared loyalty points across 5,247 properties" + points-shared/redeem-anywhere badges); 4-tile loyalty stats (network members 184K, your members 64, your member value ₵31.2K +10% vs avg, network avg value); "How the network works" 4-step explainer with verbatim copy; cross-property referrals card with zero-commission callout + summary (referrals/revenue/commission saved) + full Table (desktop) / card layout (mobile), Akwaaba highlighted in orange, every commission 0%; network guests grid (5 NETWORK_GUESTS) rich cards with avatar + tier badge + consent badge + travel pattern + 2×2 stat grid (properties visited / network spend / booking window / budget) + preferred destinations pills (first highlighted) + cross-property referrals strip + "Send cross-property offer" toast button; consent & privacy card ("64 of your guests have opted in" + consent progress bar + 5 privacy guarantees + consent-dashboard button); network reach constellation visualization (hub-and-spoke SVG, Accra-you pulsing center + destination nodes sized by preference count + dashed connection lines + tooltips + ranked destination list with bars).
+- Shared APIs consumed exactly as specified: NETWORK_PATTERNS/NETWORK_STATS (network-intelligence), BENCHMARKS/BENCHMARK_INSIGHTS + Benchmark type (benchmarking), NETWORK_GUESTS/CROSS_PROPERTY_REFERRALS/NETWORK_LOYALTY + NetworkGuest type (guest-network); fmtMoney/fmtMoneyShort/initials from @/lib/format; SectionHeader/TierBadge from @/components/shared; shadcn Card/Button/Badge/Separator/Table/Avatar/AvatarFallback/Tooltip; recharts ResponsiveContainer/AreaChart/Area/XAxis/YAxis/ReferenceLine/ReferenceDot/Tooltip; lucide-react; framer-motion; sonner.
+- Network-effects story made visceral throughout: "5,247 properties", "top 8%", "you couldn't know this alone", "0% commission", "184K members", "Top 12% contributor", "1,240 similar boutique guest houses".
+- Responsive: grids collapse 2→1, table → card on mobile, constellation aspect-square scales, pill filters wrap. Touch-friendly ≥h-8 buttons. Hover states (border-orange-500/40, scale on nodes). Animated bars/gauges/entrances. Toast on every primary action.
+- Verification: `bun run lint` clean (no errors). Dev server: all three routes return 200 (/?module=network-intelligence, /?module=benchmarking, /?module=guest-network), compiled with no errors in dev.log.
+- Work record saved to /agent-ctx/V3-4-full-stack-developer.md.
+
+Stage Summary:
+Three V3 network modules delivered, all `'use client'` with named exports matching registry.tsx lazy imports. Network Intelligence surfaces the 5,247-property network-effect patterns with category filtering, contribution stats, and privacy reassurance. AI Benchmarking ranks the property across 10 metrics with percentile gauges, comparison bars, a recharts distribution curve, and a climb-the-rankings action plan. Guest Lifetime Network shows the cross-property referral economy (zero-commission), rich network guest profiles, consent controls, and a constellation map of guest travel reach. Warm luxury palette enforced (no indigo/blue), dark-mode safe, mobile-first responsive, framer-motion animated, sonner toasts on every action. Lint clean, all routes 200, no locked files touched.
+- TASK COMPLETE.
+
+---
+Task ID: V3-9
+Agent: Orchestrator (main)
+Task: V3 lint, cleanup, Agent Browser verification, GitHub push
+
+Work Log:
+- Cleaned redundant <SonnerToaster> instances from 7 modules (global Toaster already in layout.tsx) — prevents duplicate toast stacks
+- bun run lint → exit 0 (clean) across all 40 modules
+- Agent Browser end-to-end verification of V3 flagship features:
+  * Copilot ⌘K: topbar "Ask the Copilot… ⌘K" button opens palette; ⌘K keyboard shortcut opens it globally; suggested commands render; clicked "Fill this weekend" → real LLM responded referencing live data (38% repeat guests, 41% direct, 72% occupancy) + actionable follow-up buttons (View mission / See opportunity feed) ✓
+  * Network Intelligence: "5,247 properties contributing anonymous intelligence... You contribute 18,400 data points · Top 12% contributor" + 8 network patterns with network-vs-you comparison ✓
+  * Payments (PaySwap): "Payments · Powered by PaySwap", 8 payment flows, embedded financing ₵120K offer, commission reconciliation, guest wallets, fraud prevention ✓
+  * Staff OS: role switcher (Reception/Housekeeping/Marketing/Maintenance/Finance); Reception workspace "Good morning, Abena" with tailored AI brief ("2 VIP arrivals, 5 check-ins during 2-5 PM peak..."); switched to Housekeeping → workspace transformed to Akua's view ✓
+- Mobile (390×844): hamburger menu + Mission Control render ✓
+- No console errors, no hydration mismatches in dev.log
+- V3 committed (e4c9ea1) and pushed to github.com/pectoraux/staypilot-ai
+
+Stage Summary:
+- V3 complete: 10 new modules + global Copilot command palette + nav restructure (40 modules total)
+- The app is now an AI Hospitality Network — network effects (5,247 properties), natural-language copilot (⌘K), payments infrastructure (PaySwap), AI ecosystem marketplace, property-specific AI brain, role-based staff OS, event-driven platform
+- Strategic positioning: "The AI Growth Platform for Hospitality Businesses"
+- TASK COMPLETE — V3 pushed to GitHub
+
+# ============================================================
+# V4 — Outcome-Based Hospitality AI
+# ============================================================
+
+---
+Task ID: V4-0
+Agent: Orchestrator (main)
+Task: V4 kickoff — shift from tools to outcomes. Owners hire AI teams with measurable goals.
+
+V4 scope: Outcome Goals (centerpiece — set goals, AI decomposes into missions, progress tracking), Autonomous Revenue Engine (predict vacancies weeks ahead, multi-step auto-workflow with projected impact), Digital Employee Marketplace (hire specialized AI staff), Predictive Operations (forecast housekeeping/linen/food/utilities/staffing), Supplier Network (vendor connections), Hospitality Data Cloud (anonymized network analytics), Hospitality API Platform (developer APIs/webhooks), Treasury (deepened PaySwap financial layer).
+
+Strategic positioning: hospitality infrastructure — StayPilot Revenue AI / Network / Payments / Marketplace / Intelligence Cloud / APIs / AI Workforce.
+
+V4 data layer in src/lib/data-v4.ts. New nav group "Outcomes" at top. Outcome Goals becomes the flagship.

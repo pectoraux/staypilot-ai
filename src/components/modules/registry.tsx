@@ -7,6 +7,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 const lazy = <T extends { default: React.ComponentType }>(p: Promise<T>) =>
   React.lazy(() => p)
 
+const OutcomeGoalsModule = lazy(import('./outcome-goals').then(m => ({ default: m.OutcomeGoalsModule })))
+const AutonomousEngineModule = lazy(import('./autonomous-engine').then(m => ({ default: m.AutonomousEngineModule })))
 const MissionControlModule = lazy(import('./mission-control').then(m => ({ default: m.MissionControlModule })))
 const MissionsModule = lazy(import('./missions').then(m => ({ default: m.MissionsModule })))
 const OpportunitiesModule = lazy(import('./opportunities').then(m => ({ default: m.OpportunitiesModule })))
@@ -15,7 +17,9 @@ const AgentsModule = lazy(import('./agents').then(m => ({ default: m.AgentsModul
 const InsightsModule = lazy(import('./insights').then(m => ({ default: m.InsightsModule })))
 const NetworkIntelligenceModule = lazy(import('./network-intelligence').then(m => ({ default: m.NetworkIntelligenceModule })))
 const BenchmarkingModule = lazy(import('./benchmarking').then(m => ({ default: m.BenchmarkingModule })))
+const DataCloudModule = lazy(import('./data-cloud').then(m => ({ default: m.DataCloudModule })))
 const AIMarketplaceModule = lazy(import('./ai-marketplace').then(m => ({ default: m.AIMarketplaceModule })))
+const DigitalEmployeesModule = lazy(import('./digital-employees').then(m => ({ default: m.DigitalEmployeesModule })))
 const GuestNetworkModule = lazy(import('./guest-network').then(m => ({ default: m.GuestNetworkModule })))
 const DigitalTwinModule = lazy(import('./digital-twin').then(m => ({ default: m.DigitalTwinModule })))
 const KnowledgeGraphModule = lazy(import('./knowledge-graph').then(m => ({ default: m.KnowledgeGraphModule })))
@@ -25,6 +29,8 @@ const FunnelModule = lazy(import('./funnel').then(m => ({ default: m.FunnelModul
 const ReputationIntelModule = lazy(import('./reputation-intel').then(m => ({ default: m.ReputationIntelModule })))
 const PropertyBrainModule = lazy(import('./property-brain').then(m => ({ default: m.PropertyBrainModule })))
 const EventsModule = lazy(import('./events').then(m => ({ default: m.EventsModule })))
+const PredictiveOpsModule = lazy(import('./predictive-ops').then(m => ({ default: m.PredictiveOpsModule })))
+const SupplierNetworkModule = lazy(import('./supplier-network').then(m => ({ default: m.SupplierNetworkModule })))
 const StaffOSModule = lazy(import('./staff-os').then(m => ({ default: m.StaffOSModule })))
 const CalendarModule = lazy(import('./calendar').then(m => ({ default: m.CalendarModule })))
 const ReservationsModule = lazy(import('./reservations').then(m => ({ default: m.ReservationsModule })))
@@ -44,12 +50,16 @@ const CompetitorsModule = lazy(import('./competitors').then(m => ({ default: m.C
 const ChannelsModule = lazy(import('./channels').then(m => ({ default: m.ChannelsModule })))
 const DirectIntelModule = lazy(import('./direct-intel').then(m => ({ default: m.DirectIntelModule })))
 const PaymentsModule = lazy(import('./payments').then(m => ({ default: m.PaymentsModule })))
+const TreasuryModule = lazy(import('./treasury').then(m => ({ default: m.TreasuryModule })))
 const FinanceModule = lazy(import('./finance').then(m => ({ default: m.FinanceModule })))
+const APIPlatformModule = lazy(import('./api-platform').then(m => ({ default: m.APIPlatformModule })))
 const MultiPropertyModule = lazy(import('./multi-property').then(m => ({ default: m.MultiPropertyModule })))
 const WebsiteBuilderModule = lazy(import('./website-builder').then(m => ({ default: m.WebsiteBuilderModule })))
 const MarketplaceModule = lazy(import('./marketplace').then(m => ({ default: m.MarketplaceModule })))
 
 const MAP: Record<ModuleKey, React.ComponentType> = {
+  'outcome-goals': OutcomeGoalsModule,
+  'autonomous-engine': AutonomousEngineModule,
   'mission-control': MissionControlModule,
   'missions': MissionsModule,
   'opportunities': OpportunitiesModule,
@@ -58,7 +68,9 @@ const MAP: Record<ModuleKey, React.ComponentType> = {
   'insights': InsightsModule,
   'network-intelligence': NetworkIntelligenceModule,
   'benchmarking': BenchmarkingModule,
+  'data-cloud': DataCloudModule,
   'ai-marketplace': AIMarketplaceModule,
+  'digital-employees': DigitalEmployeesModule,
   'guest-network': GuestNetworkModule,
   'digital-twin': DigitalTwinModule,
   'knowledge-graph': KnowledgeGraphModule,
@@ -68,6 +80,8 @@ const MAP: Record<ModuleKey, React.ComponentType> = {
   'reputation-intel': ReputationIntelModule,
   'property-brain': PropertyBrainModule,
   'events': EventsModule,
+  'predictive-ops': PredictiveOpsModule,
+  'supplier-network': SupplierNetworkModule,
   'staff-os': StaffOSModule,
   'calendar': CalendarModule,
   'reservations': ReservationsModule,
@@ -87,7 +101,9 @@ const MAP: Record<ModuleKey, React.ComponentType> = {
   'channels': ChannelsModule,
   'direct-intel': DirectIntelModule,
   'payments': PaymentsModule,
+  'treasury': TreasuryModule,
   'finance': FinanceModule,
+  'api-platform': APIPlatformModule,
   'multi-property': MultiPropertyModule,
   'website-builder': WebsiteBuilderModule,
   'marketplace': MarketplaceModule,
@@ -107,7 +123,7 @@ function ModuleSkeleton() {
 
 export function ModuleRegistry() {
   const { activeModule } = useApp()
-  const Comp = MAP[activeModule] ?? MissionControlModule
+  const Comp = MAP[activeModule] ?? OutcomeGoalsModule
   return (
     <React.Suspense fallback={<ModuleSkeleton />}>
       <Comp />
